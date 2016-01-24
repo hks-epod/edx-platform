@@ -18,6 +18,8 @@ from monkey_patch import third_party_auth
 import xmodule.x_module
 import lms_xblock.runtime
 
+from openedx.core.djangoapps.theming.core import enable_comprehensive_theme
+
 log = logging.getLogger(__name__)
 
 
@@ -30,6 +32,11 @@ def run():
     # To override the settings before executing the autostartup() for python-social-auth
     if settings.FEATURES.get('ENABLE_THIRD_PARTY_AUTH', False):
         enable_third_party_auth()
+
+    # Comprehensive theming needs to be set up before django startup,
+    # because modifying django template paths after startup has no effect.
+    if settings.COMPREHENSIVE_THEME_DIR:
+        enable_comprehensive_theme(settings.COMPREHENSIVE_THEME_DIR)
 
     django.setup()
 
