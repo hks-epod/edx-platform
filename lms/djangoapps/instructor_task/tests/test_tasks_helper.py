@@ -32,7 +32,7 @@ from student.models import CourseEnrollment, CourseEnrollmentAllowed, ManualEnro
 from lms.djangoapps.verify_student.tests.factories import SoftwareSecurePhotoVerificationFactory
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 from xmodule.partitions.partitions import Group, UserPartition
-from instructor_task.models import ReportStore
+from lms.djangoapps.instructor_task.models import ReportStore
 from survey.models import SurveyForm, SurveyAnswer
 from instructor_task.tasks_helper import (
     cohort_students_and_upload,
@@ -1633,7 +1633,7 @@ class TestCertificateGeneration(InstructorTaskModuleTestCase):
                 mock_current_task.return_value = current_task
                 with patch('capa.xqueue_interface.XQueueInterface.send_to_queue') as mock_queue:
                     mock_queue.return_value = (0, "Successfully queued")
-                    with patch('instructor_task.models.InstructorTask.objects.get') as instructor_task_object:
+                    with patch('lms.djangoapps.instructor_task.models.InstructorTask.objects.get') as instructor_task_object:
                         instructor_task_object.return_value = instructor_task
                         result = generate_students_certificates(
                             None, None, self.course.id, {}, 'certificates generated'

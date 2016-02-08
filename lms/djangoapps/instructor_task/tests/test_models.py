@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from unittest import TestCase
 
-from instructor_task.models import LocalFSReportStore, S3ReportStore
+from lms.djangoapps.instructor_task.models import LocalFSReportStore, S3ReportStore
 from instructor_task.tests.test_base import TestReportMixin
 from opaque_keys.edx.locator import CourseLocator
 
@@ -94,10 +94,10 @@ class LocalFSReportStoreTestCase(ReportStoreTestMixin, TestReportMixin, TestCase
         return LocalFSReportStore.from_config(config_name='GRADES_DOWNLOAD')
 
 
-@mock.patch('instructor_task.models.S3Connection', new=MockS3Connection)
-@mock.patch('instructor_task.models.Key', new=MockKey)
-@mock.patch('instructor_task.models.settings.AWS_SECRET_ACCESS_KEY', create=True, new="access_key")
-@mock.patch('instructor_task.models.settings.AWS_ACCESS_KEY_ID', create=True, new="access_id")
+@mock.patch('lms.djangoapps.instructor_task.models.S3Connection', new=MockS3Connection)
+@mock.patch('lms.djangoapps.instructor_task.models.Key', new=MockKey)
+@mock.patch('lms.djangoapps.instructor_task.models.settings.AWS_SECRET_ACCESS_KEY', create=True, new="access_key")
+@mock.patch('lms.djangoapps.instructor_task.models.settings.AWS_ACCESS_KEY_ID', create=True, new="access_id")
 class S3ReportStoreTestCase(ReportStoreTestMixin, TestReportMixin, TestCase):
     """
     Test the S3ReportStore model.
