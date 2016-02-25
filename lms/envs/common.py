@@ -397,6 +397,9 @@ FEATURES = {
 
     # Enable LTI Provider feature.
     'ENABLE_LTI_PROVIDER': False,
+
+    # Enable Next Button to jump sequences in Sequence Navigation bar.
+    'ENABLE_NEXT_BUTTON_ACROSS_SECTIONS': False,
 }
 
 # Ignore static asset files on import which match this pattern

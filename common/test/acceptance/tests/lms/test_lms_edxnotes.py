@@ -193,14 +193,14 @@ class EdxNotesDefaultInteractionsTest(EdxNotesTestMixin):
         self.create_notes(components)
         self.assert_text_in_notes(self.note_unit_page.notes)
 
-        self.course_nav.go_to_sequential_position(2)
+        self.courseware_page.go_to_sequential_position(2)
         components = self.note_unit_page.components
         self.create_notes(components)
 
         components = self.note_unit_page.refresh()
         self.assert_text_in_notes(self.note_unit_page.notes)
 
-        self.course_nav.go_to_sequential_position(1)
+        self.courseware_page.go_to_sequential_position(1)
         components = self.note_unit_page.components
         self.assert_text_in_notes(self.note_unit_page.notes)
 
@@ -226,7 +226,7 @@ class EdxNotesDefaultInteractionsTest(EdxNotesTestMixin):
         self.edit_notes(components)
         self.assert_text_in_notes(self.note_unit_page.notes)
 
-        self.course_nav.go_to_sequential_position(2)
+        self.courseware_page.go_to_sequential_position(2)
         components = self.note_unit_page.components
         self.edit_notes(components)
         self.assert_text_in_notes(self.note_unit_page.notes)
@@ -234,7 +234,7 @@ class EdxNotesDefaultInteractionsTest(EdxNotesTestMixin):
         components = self.note_unit_page.refresh()
         self.assert_text_in_notes(self.note_unit_page.notes)
 
-        self.course_nav.go_to_sequential_position(1)
+        self.courseware_page.go_to_sequential_position(1)
         components = self.note_unit_page.components
         self.assert_text_in_notes(self.note_unit_page.notes)
 
@@ -260,7 +260,7 @@ class EdxNotesDefaultInteractionsTest(EdxNotesTestMixin):
         self.remove_notes(components)
         self.assert_notes_are_removed(components)
 
-        self.course_nav.go_to_sequential_position(2)
+        self.courseware_page.go_to_sequential_position(2)
         components = self.note_unit_page.components
         self.remove_notes(components)
         self.assert_notes_are_removed(components)
@@ -268,7 +268,7 @@ class EdxNotesDefaultInteractionsTest(EdxNotesTestMixin):
         components = self.note_unit_page.refresh()
         self.assert_notes_are_removed(components)
 
-        self.course_nav.go_to_sequential_position(1)
+        self.courseware_page.go_to_sequential_position(1)
         components = self.note_unit_page.components
         self.assert_notes_are_removed(components)
 
@@ -998,10 +998,10 @@ class EdxNotesPageTest(EventsTestMixin, EdxNotesTestMixin):
         self.assertTrue(note.is_visible)
         note = self.note_unit_page.notes[1]
         self.assertFalse(note.is_visible)
-        self.course_nav.go_to_sequential_position(2)
+        self.courseware_page.go_to_sequential_position(2)
         note = self.note_unit_page.notes[0]
         self.assertFalse(note.is_visible)
-        self.course_nav.go_to_sequential_position(1)
+        self.courseware_page.go_to_sequential_position(1)
         note = self.note_unit_page.notes[0]
         self.assertFalse(note.is_visible)
 
@@ -1101,7 +1101,7 @@ class EdxNotesToggleNotesTest(EdxNotesTestMixin):
         # Disable all notes
         self.note_unit_page.toggle_visibility()
         self.assertEqual(len(self.note_unit_page.notes), 0)
-        self.course_nav.go_to_sequential_position(2)
+        self.courseware_page.go_to_sequential_position(2)
         self.assertEqual(len(self.note_unit_page.notes), 0)
         self.course_nav.go_to_section(u"Test Section 1", u"Test Subsection 2")
         self.assertEqual(len(self.note_unit_page.notes), 0)
@@ -1127,7 +1127,7 @@ class EdxNotesToggleNotesTest(EdxNotesTestMixin):
         # the page.
         self.note_unit_page.toggle_visibility()
         self.assertGreater(len(self.note_unit_page.notes), 0)
-        self.course_nav.go_to_sequential_position(2)
+        self.courseware_page.go_to_sequential_position(2)
         self.assertGreater(len(self.note_unit_page.notes), 0)
         self.course_nav.go_to_section(u"Test Section 1", u"Test Subsection 2")
         self.assertGreater(len(self.note_unit_page.notes), 0)
