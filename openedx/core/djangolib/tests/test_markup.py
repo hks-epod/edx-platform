@@ -3,6 +3,7 @@
 Tests for openedx.core.djangolib.markup
 """
 
+from nose.plugins.attrib import attr
 import unittest
 
 import ddt
@@ -11,6 +12,7 @@ from mako.template import Template
 from openedx.core.djangolib.markup import escape, HTML, ugettext as _, ungettext
 
 
+@attr('shard_2')
 @ddt.ddt
 class FormatHtmlTest(unittest.TestCase):
     """Test that we can format plain strings and HTML into them properly."""
