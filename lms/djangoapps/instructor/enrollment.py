@@ -220,6 +220,7 @@ def reset_student_attempts(course_id, student, module_state_key, requesting_user
 
     """
     user_id = anonymous_id_for_user(student, course_id)
+    requesting_user_id = anonymous_id_for_user(requesting_user, course_id)
     submission_cleared = False
     try:
         # A block may have children. Clear state on children first.
@@ -227,7 +228,7 @@ def reset_student_attempts(course_id, student, module_state_key, requesting_user
         if block.has_children:
             for child in block.children:
                 try:
-                    reset_student_attempts(course_id, student, child, delete_module=delete_module)
+                    reset_student_attempts(course_id, student, child, requesting_user, delete_module=delete_module)
                 except StudentModule.DoesNotExist:
                     # If a particular child doesn't have any state, no big deal, as long as the parent does.
                     pass
@@ -240,7 +241,7 @@ def reset_student_attempts(course_id, student, module_state_key, requesting_user
                     user_id=user_id,
                     course_id=unicode(course_id),
                     item_id=unicode(module_state_key),
-                    requesting_user=requesting_user
+                    requesting_user_id=requesting_user_id
                 )
                 submission_cleared = True
     except ItemNotFoundError:
