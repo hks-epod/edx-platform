@@ -10,7 +10,7 @@ from .helpers import (
 )
 
 
-def enable_comprehensive_theme(themes_dir):
+def enable_comprehensive_theming(themes_dir):
     """
     Add directories to relevant paths for comprehensive theming.
     :param themes_dir: path to base theme directory

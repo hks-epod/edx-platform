@@ -45,7 +45,8 @@ class ComprehensiveThemingAwareMixin(object):
         themed_path = "/".join([
             self.themes_location,
             theme_dir,
-            get_project_root_name()
+            get_project_root_name(),
+            "static/"
         ])
         name = name[1:] if name.startswith("/") else name
         path = safe_join(themed_path, name)
@@ -59,7 +60,7 @@ class ComprehensiveThemingAwareMixin(object):
             theme_dir, asset_path = name.split("/", 1)
             if self.themed(asset_path, theme_dir):
                 name = asset_path
-                base = self.themes_location + "/" + theme_dir + "/" + get_project_root_name()
+                base = self.themes_location + "/" + theme_dir + "/" + get_project_root_name() + "/static/"
             else:
                 base = self.location
         except ValueError:
@@ -73,7 +74,7 @@ class ComprehensiveThemingAwareMixin(object):
         Add the theme prefix to the asset URL
         """
         if self.themed(name, theme_dir):
-            name = theme_dir + name
+            name = theme_dir + "/" + name
         return super(ComprehensiveThemingAwareMixin, self).url(name)
 
 

@@ -422,6 +422,9 @@ openid.oidutil.log = lambda message, level=0: None
 PLATFORM_NAME = "edX"
 SITE_NAME = "edx.org"
 
+# use default site for tests
+SITE_ID = 1
+
 # set up some testing for microsites
 FEATURES['USE_MICROSITES'] = True
 MICROSITE_ROOT_DIR = COMMON_ROOT / 'test' / 'test_microsites'

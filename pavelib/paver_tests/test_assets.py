@@ -2,9 +2,11 @@
 
 import ddt
 import os
+from unittest import TestCase
 from paver.easy import call_task
 from paver.easy import path
-
+from mock import patch
+from watchdog.observers import Observer
 from .utils import PaverTestCase
 
 ROOT_PATH = path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -43,11 +45,11 @@ class TestPaverAssetTasks(PaverTestCase):
         self.reset_task_messages()
         call_task('pavelib.assets.compile_sass', options={"system": system, "debug": debug, "force": force})
         expected_messages = []
-        if "lms" in system:
-            if force:
-                expected_messages.append("rm -rf common/static/css/*.css")
-            expected_messages.append("libsass common/static/sass")
+        if force:
+            expected_messages.append("rm -rf common/static/css/*.css")
+        expected_messages.append("libsass common/static/sass")
 
+        if "lms" in system:
             if force:
                 expected_messages.append("rm -rf lms/static/css/*.css")
             expected_messages.append("libsass lms/static/sass")
@@ -56,12 +58,9 @@ class TestPaverAssetTasks(PaverTestCase):
             expected_messages.append("libsass lms/static/certificates/sass")
         if "studio" in system:
             if force:
-                expected_messages.append("rm -rf common/static/css/*.css")
-            expected_messages.append("libsass common/static/sass")
-
-            if force:
                 expected_messages.append("rm -rf cms/static/css/*.css")
             expected_messages.append("libsass cms/static/sass")
+
         self.assertEquals(self.task_messages, expected_messages)
 
 
@@ -104,11 +103,12 @@ class TestPaverThemeAssetTasks(PaverTestCase):
                      "themes": [TEST_THEME.basename()]},
         )
         expected_messages = []
+        if force:
+            expected_messages.append("rm -rf common/static/css/*.css")
+        expected_messages.append("libsass common/static/sass")
+
         if "lms" in system:
             expected_messages.append("mkdir_p " + repr(TEST_THEME / "lms/static/css"))
-            if force:
-                expected_messages.append("rm -rf common/static/css/*.css")
-            expected_messages.append("libsass common/static/sass")
 
             if force:
                 expected_messages.append("rm -rf " + str(TEST_THEME) + "/lms/static/css/*.css")
@@ -116,12 +116,15 @@ class TestPaverThemeAssetTasks(PaverTestCase):
             if force:
                 expected_messages.append("rm -rf " + str(TEST_THEME) + "/lms/static/css/*.css")
             expected_messages.append("libsass " + str(TEST_THEME) + "/lms/static/sass")
+            if force:
+                expected_messages.append("rm -rf lms/static/css/*.css")
+            expected_messages.append("libsass lms/static/sass")
+            if force:
+                expected_messages.append("rm -rf lms/static/certificates/css/*.css")
+            expected_messages.append("libsass lms/static/certificates/sass")
+
         if "studio" in system:
             expected_messages.append("mkdir_p " + repr(TEST_THEME / "cms/static/css"))
-            if force:
-                expected_messages.append("rm -rf common/static/css/*.css")
-            expected_messages.append("libsass common/static/sass")
-
             if force:
                 expected_messages.append("rm -rf " + str(TEST_THEME) + "/cms/static/css/*.css")
             expected_messages.append("libsass cms/static/sass")
@@ -129,4 +132,73 @@ class TestPaverThemeAssetTasks(PaverTestCase):
                 expected_messages.append("rm -rf " + str(TEST_THEME) + "/cms/static/css/*.css")
             expected_messages.append("libsass " + str(TEST_THEME) + "/cms/static/sass")
 
+            if force:
+                expected_messages.append("rm -rf cms/static/css/*.css")
+            expected_messages.append("libsass cms/static/sass")
+
         self.assertEquals(self.task_messages, expected_messages)
+
+
+class TestPaverWatchAssetTasks(TestCase):
+    """
+    Test the Paver watch asset tasks.
+    """
+
+    def setUp(self):
+        self.expected_sass_directories = [
+            path('common/static/sass'),
+            path('common/static'),
+            path('lms/static/sass/partials'),
+            path('lms/static/sass'),
+            path('lms/static/certificates/sass'),
+            path('cms/static/sass'),
+            path('cms/static/sass/partials'),
+        ]
+        super(TestPaverWatchAssetTasks, self).setUp()
+
+    def test_watch_assets(self):
+        """
+        Test the "compile_sass" task.
+        """
+        with patch('pavelib.assets.SassWatcher.register') as mock_register:
+            with patch('pavelib.assets.Observer.start'):
+                call_task(
+                    'pavelib.assets.watch_assets',
+                    options={"background": True},
+                )
+                self.assertEqual(mock_register.call_count, 2)
+
+                sass_watcher_args = mock_register.call_args_list[0][0]
+
+                self.assertIsInstance(sass_watcher_args[0], Observer)
+                self.assertIsInstance(sass_watcher_args[1], list)
+                self.assertItemsEqual(sass_watcher_args[1], self.expected_sass_directories)
+
+    def test_watch_theme_assets(self):
+        """
+        Test the Paver watch asset tasks with theming enabled.
+        """
+        self.expected_sass_directories.extend([
+            path(TEST_THEME) / 'lms/static/sass',
+            path(TEST_THEME) / 'lms/static/sass/partials',
+            path(TEST_THEME) / 'cms/static/sass',
+            path(TEST_THEME) / 'cms/static/sass/partials',
+        ])
+
+        with patch('pavelib.assets.SassWatcher.register') as mock_register:
+            with patch('pavelib.assets.Observer.start'):
+                call_task(
+                    'pavelib.assets.watch_assets',
+                    options={"background": True, "themes_dir": TEST_THEME.dirname(),
+                             "themes": [TEST_THEME.basename()]},
+                )
+                self.assertEqual(mock_register.call_count, 2)
+
+                sass_watcher_args = mock_register.call_args_list[0][0]
+                self.assertIsInstance(sass_watcher_args[0], Observer)
+                self.assertIsInstance(sass_watcher_args[1], list)
+                self.assertItemsEqual(sass_watcher_args[1], self.expected_sass_directories)
+
+    def tearDown(self):
+        self.expected_sass_directories = []
+        super(TestPaverWatchAssetTasks, self).tearDown()

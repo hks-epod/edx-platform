@@ -28,7 +28,7 @@ def with_comprehensive_theme(theme_dir_name):
         @wraps(func)
         def _decorated(*args, **kwargs):        # pylint: disable=missing-docstring
             # make a domain name out of directory name
-            domain = "{theme_dir_name}.org".format(theme_dir_name=re.sub(r"[\s.org_]", "", theme_dir_name))
+            domain = "{theme_dir_name}.org".format(theme_dir_name=re.sub(r"\.org$", "", theme_dir_name))
             site, __ = Site.objects.get_or_create(domain=domain, name=domain)
             SiteTheme.objects.get_or_create(site=site, theme_dir_name=theme_dir_name)
             edxmako.paths.add_lookup('main', settings.COMPREHENSIVE_THEME_DIR, prepend=True)
@@ -40,42 +40,22 @@ def with_comprehensive_theme(theme_dir_name):
     return _decorator
 
 
-def with_is_edx_domain(is_edx_domain):
-    """
-    A decorator to run a test as if request originated from edX domain or not.
-
-    Arguments:
-        is_edx_domain (bool): are we an edX domain or not?
-
-    """
-    # This is weird, it's a decorator that conditionally applies other
-    # decorators, which is confusing.
-    def _decorator(func):                       # pylint: disable=missing-docstring
-        if is_edx_domain:
-            # This applies @with_comprehensive_theme to the func.
-            func = with_comprehensive_theme('edx.org')(func)
-
-        return func
-
-    return _decorator
-
-
 @contextlib.contextmanager
-def with_edx_domain_context(is_edx_domain):
+def with_comprehensive_theme_context(theme=None):
     """
-    A function to run a test as if request originated from edX domain or not.
+    A function to run a test as if request was made to the given theme.
 
     Arguments:
-        is_edx_domain (bool): are we an edX domain or not?
+        theme (str): name if the theme or None if no theme is applied
 
     """
-    if is_edx_domain:
-        domain = 'edx.org'
-        site, __ = Site.objects.get_or_create(domain=domain, name=domain)
-        SiteTheme.objects.get_or_create(site=site, theme_dir_name=domain)
+    if theme:
+        domain = '{theme}.org'.format(theme=re.sub(r"\.org$", "", theme))
+        site, __ = Site.objects.get_or_create(domain=domain, name=theme)
+        SiteTheme.objects.get_or_create(site=site, theme_dir_name=theme)
         edxmako.paths.add_lookup('main', settings.COMPREHENSIVE_THEME_DIR, prepend=True)
         with patch('openedx.core.djangoapps.theming.helpers.get_current_site_theme_dir',
-                   return_value=domain):
+                   return_value=theme):
             with patch('openedx.core.djangoapps.theming.helpers.get_current_site', return_value=site):
                 yield
     else:

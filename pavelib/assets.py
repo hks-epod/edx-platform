@@ -41,10 +41,8 @@ SASS_LOOKUP_DEPENDENCIES = {
     'cms': [path('lms') / 'static' / 'sass' / 'partials', ],
 }
 
-THEME_SASS_WATCHER_DIRS = []
 
-
-def get_sass_directories(system, theme_dir):
+def get_sass_directories(system, theme_dir=None):
     """
     Determine the set of SASS directories to be compiled for the specified list of system and theme
     and return a list of those directories.
@@ -67,16 +65,6 @@ def get_sass_directories(system, theme_dir):
 
     applicable_directories = list()
 
-    # add common sass directories
-    applicable_directories.append({
-        "sass_source_dir": path("common/static/sass"),
-        "css_destination_dir": path("common/static/css"),
-        "lookup_paths": [
-            path("common/static"),
-            path("common/static/sass"),
-        ],
-    })
-
     if theme_dir:
         # Add theme sass directories
         applicable_directories.extend(
@@ -91,10 +79,35 @@ def get_sass_directories(system, theme_dir):
     return applicable_directories
 
 
+def get_common_sass_directories():
+    """
+    Determine the set of common SASS directories to be compiled for all the systems and themes.
+
+    Each item in the returned list is dict object containing the following key-value pairs.
+    {
+        "sass_source_dir": "",  # directory where source sass files are present
+        "css_destination_dir": "",  # destination where css files would be placed
+        "lookup_paths": [],  # list of directories to be passed as lookup paths for @import resolution.
+    }
+    """
+    applicable_directories = list()
+
+    # add common sass directories
+    applicable_directories.append({
+        "sass_source_dir": path("common/static/sass"),
+        "css_destination_dir": path("common/static/css"),
+        "lookup_paths": [
+            path("common/static"),
+            path("common/static/sass"),
+        ],
+    })
+
+    return applicable_directories
+
+
 def get_theme_sass_dirs(system, theme_dir):
     """
-    Return list of sass dirs that need to be compiled for the given theme. Also add theme sass directories to
-    THEME_SASS_WATCHER_DIRS variables so that they could be added to sass watcher later.
+    Return list of sass dirs that need to be compiled for the given theme.
 
     :param system: name if the system for which to compile sass e.g. 'lms', 'cms'
     :param theme_dir: absolute path of theme for which to compile sass files.
@@ -104,37 +117,35 @@ def get_theme_sass_dirs(system, theme_dir):
 
     dirs = []
 
-    system_sass = path(system) / "static" / "sass"
-    sass = theme_dir / system / "static" / "sass"
-    css = theme_dir / system / "static" / "css"
+    system_sass_dir = path(system) / "static" / "sass"
+    sass_dir = theme_dir / system / "static" / "sass"
+    css_dir = theme_dir / system / "static" / "css"
 
-    if sass.isdir():
-        css.mkdir_p()
+    dependencies = SASS_LOOKUP_DEPENDENCIES.get(system, [])
+    if sass_dir.isdir():
+        css_dir.mkdir_p()
 
         # first compile lms sass files and place css in theme dir
         dirs.append({
-            "sass_source_dir": system_sass,
-            "css_destination_dir": css,
-            "lookup_paths": [
-                sass / "partials",
-                system_sass / "partials",
-                system_sass,
+            "sass_source_dir": system_sass_dir,
+            "css_destination_dir": css_dir,
+            "lookup_paths": dependencies + [
+                sass_dir / "partials",
+                system_sass_dir / "partials",
+                system_sass_dir,
             ],
         })
 
         # now compile theme sass files and override css files generated from lms
         dirs.append({
-            "sass_source_dir": sass,
-            "css_destination_dir": css,
-            "lookup_paths": [
-                sass / "partials",
-                system_sass / "partials",
-                system_sass,
+            "sass_source_dir": sass_dir,
+            "css_destination_dir": css_dir,
+            "lookup_paths": dependencies + [
+                sass_dir / "partials",
+                system_sass_dir / "partials",
+                system_sass_dir,
             ],
         })
-
-        # Add theme dirs to sass watcher directories
-        THEME_SASS_WATCHER_DIRS.extend([sass, sass / 'partials'])
 
     return dirs
 
@@ -149,16 +160,16 @@ def get_system_sass_dirs(system):
         raise ValueError('"system" must either be "lms" or "cms"')
 
     dirs = []
-    sass = path(system) / "static" / "sass"
-    css = path(system) / "static" / "css"
+    sass_dir = path(system) / "static" / "sass"
+    css_dir = path(system) / "static" / "css"
 
     dependencies = SASS_LOOKUP_DEPENDENCIES.get(system, [])
     dirs.append({
-        "sass_source_dir": sass,
-        "css_destination_dir": css,
+        "sass_source_dir": sass_dir,
+        "css_destination_dir": css_dir,
         "lookup_paths": dependencies + [
-            sass / "partials",
-            sass,
+            sass_dir / "partials",
+            sass_dir,
         ],
     })
 
@@ -167,24 +178,54 @@ def get_system_sass_dirs(system):
             "sass_source_dir": path(system) / "static" / "certificates" / "sass",
             "css_destination_dir": path(system) / "static" / "certificates" / "css",
             "lookup_paths": [
-                sass / "partials",
-                sass
+                sass_dir / "partials",
+                sass_dir
             ],
         })
 
     return dirs
 
 
-def get_watcher_dirs():
+def get_watcher_dirs(themes_base_dir=None, themes=None):
     """
-    :return dirs that need to be added to sass watchers.
+    Return sass directories that need to be added to sass watcher.
+
+    Example:
+        >> get_watcher_dirs('/edx/app/edx-platform/themes', ['red-theme'])
+        [
+            'common/static',
+            'common/static/sass',
+            'lms/static/sass',
+            'lms/static/sass/partials',
+            '/edx/app/edxapp/edx-platform/themes/red-theme/lms/static/sass',
+            '/edx/app/edxapp/edx-platform/themes/red-theme/lms/static/sass/partials',
+            'cms/static/sass',
+            'cms/static/sass/partials',
+            '/edx/app/edxapp/edx-platform/themes/red-theme/cms/static/sass/partials',
+        ]
+
+    Parameters:
+        themes_base_dir (str): base directory that contains all the themes.
+        themes (list): list containing names of themes
+    Returns:
+        (list): dirs that need to be added to sass watchers.
     """
     dirs = []
     dirs.extend(COMMON_LOOKUP_DIRS)
-    dirs.extend(THEME_SASS_WATCHER_DIRS)
-    for _dir in get_sass_directories('lms', None) + get_sass_directories('cms', None):
+    if themes_base_dir and themes:
+        # Register sass watchers for all the given themes
+        theme_dirs = [(path(themes_base_dir) / theme) for theme in themes if theme]
+        for theme_dir in theme_dirs:
+            for _dir in get_sass_directories('lms', theme_dir) + get_sass_directories('cms', theme_dir):
+                dirs.append(_dir['sass_source_dir'])
+                dirs.extend(_dir['lookup_paths'])
+    # Register sass watchers for lms and cms
+    for _dir in get_sass_directories('lms') + get_sass_directories('cms') + get_common_sass_directories():
         dirs.append(_dir['sass_source_dir'])
         dirs.extend(_dir['lookup_paths'])
+
+    # remove duplicates
+    dirs = list(set(dirs))
     return dirs
 
 
@@ -221,11 +262,15 @@ class SassWatcher(PatternMatchingEventHandler):
     patterns = ['*.scss']
     ignore_patterns = ['common/static/xmodule/*']
 
-    def register(self, observer):
+    def register(self, observer, directories):
         """
         register files with observer
+
+        Arguments:
+            observer (watchdog.observers.Observer): sass file observer
+            directories (list): list of directories to be register for sass watcher.
         """
-        for dirname in get_watcher_dirs():
+        for dirname in directories:
             paths = []
             if '*' in dirname:
                 paths.extend(glob.glob(dirname))
@@ -248,12 +293,6 @@ class XModuleSassWatcher(SassWatcher):
     """
     ignore_directories = True
     ignore_patterns = []
-
-    def register(self, observer):
-        """
-        register files with observer
-        """
-        observer.schedule(self, 'common/lib/xmodule/', recursive=True)
 
     def on_modified(self, event):
         print('\tCHANGED:', event.src_path)
@@ -319,26 +358,34 @@ def compile_coffeescript(*files):
 ])
 def compile_sass(options):
     """
-    Compile Sass to CSS. following is a list of some possible ways to use this command.
+    Compile Sass to CSS. If command is called without any arguments, it will
+    only compile lms, cms sass for the open source theme. And none of the comprehensive theme's sass would be compiled.
+
+    If you want to compile sass for all comprehensive themes you will have to run compile_sass
+    specifying all the themes that need to be compiled..
+
+    The following is a list of some possible ways to use this command.
 
     Command:
-        1. paver compile_sass
+        paver compile_sass
     Description:
-        compile sass files for both lms and cms
+        compile sass files for both lms and cms. If command is called like above (i.e. without any arguments) it will
+        only compile lms, cms sass for the open source theme. None of the theme's sass will be compiled.
 
     Command:
-        1. paver compile_sass --themes_dir=/edx/app/edxapp/edx-platform/themes --themes=red-theme
+        paver compile_sass --themes_dir=/edx/app/edxapp/edx-platform/themes --themes=red-theme
     Description:
         compile sass files for both lms and cms for 'red-theme' present in '/edx/app/edxapp/edx-platform/themes'
 
     Command:
-        1. paver compile_sass --themes_dir=/edx/app/edxapp/edx-platform/themes --themes=red-theme,stanford-style
+        paver compile_sass --themes_dir=/edx/app/edxapp/edx-platform/themes --themes=red-theme,stanford-style
     Description:
         compile sass files for both lms and cms for 'red-theme' and 'stanford-style' present in
         '/edx/app/edxapp/edx-platform/themes'.
 
     Command:
-      paver compile_sass --system=cms --themes_dir=/edx/app/edxapp/edx-platform/themes --themes=red-theme,stanford-style
+        paver compile_sass --system=cms --themes_dir=/edx/app/edxapp/edx-platform/themes
+            --themes=red-theme,stanford-style
     Description:
         compile sass files for cms only for 'red-theme' and 'stanford-style' present in
         '/edx/app/edxapp/edx-platform/themes'.
@@ -365,11 +412,22 @@ def compile_sass(options):
     else:
         themes = themes if isinstance(themes, list) else [themes]
 
+    # Compile sass for OpenEdx theme after comprehensive themes
+    if None not in themes:
+        themes.append(None)
+
     timing_info = []
     dry_run = tasks.environment.dry_run
     compilation_results = {'success': [], 'failure': []}
 
     print("\t\tStarted compiling Sass:")
+
+    # compile common sass files
+    is_successful = _compile_sass('common', None, debug, force, timing_info)
+    if is_successful:
+        print("Finished compiling 'common' sass.")
+    compilation_results['success' if is_successful else 'failure'].append('"common" sass files.')
+
     for system in systems:
         for theme in themes:
             print("Started compiling '{system}' Sass for '{theme}'.".format(system=system, theme=theme or 'system'))
@@ -407,10 +465,11 @@ def _compile_sass(system, theme, debug, force, timing_info):
     """
     Compile sass files for the given system and theme.
 
-    :param system: system to compile sass for e.g. 'lm', 'cms'
+    :param system: system to compile sass for e.g. 'lms', 'cms', 'common'
     :param theme: absolute path of the theme to compile sass for.
-    :param debug:
-    :param force:
+    :param debug: boolean showing whether to display source comments in resulted css
+    :param force: boolean showing whether to remove existing css files before generating new files
+    :param timing_info: list variable to keep track of timing for sass compilation
     """
 
     # Note: import sass only when it is needed and not at the top of the file.
@@ -418,7 +477,10 @@ def _compile_sass(system, theme, debug, force, timing_info):
     # installed. In particular, this allows the install_prereqs command to be
     # used to install the dependency.
     import sass
-    sass_dirs = get_sass_directories(system, theme)
+    if system == "common":
+        sass_dirs = get_common_sass_directories()
+    else:
+        sass_dirs = get_sass_directories(system, theme)
 
     dry_run = tasks.environment.dry_run
 
@@ -433,14 +495,14 @@ def _compile_sass(system, theme, debug, force, timing_info):
     for dirs in sass_dirs:
         start = datetime.now()
         css_dir = dirs['css_destination_dir']
-        system_sass_dir = dirs['sass_source_dir']
+        sass_source_dir = dirs['sass_source_dir']
         lookup_paths = dirs['lookup_paths']
 
-        if not system_sass_dir.isdir():
+        if not sass_source_dir.isdir():
             print("\033[91m Sass dir '{dir}' does not exists, skipping sass compilation for '{theme}' \033[00m".format(
                 dir=sass_dirs, theme=theme or system,
             ))
-            # invalid sass directory, skip sass compilation
+            # theme doesn't override sass directory, so skip it
             continue
 
         if force:
@@ -453,17 +515,17 @@ def _compile_sass(system, theme, debug, force, timing_info):
 
         if dry_run:
             tasks.environment.info("libsass {sass_dir}".format(
-                sass_dir=system_sass_dir,
+                sass_dir=sass_source_dir,
             ))
         else:
             sass.compile(
-                dirname=(system_sass_dir, css_dir),
+                dirname=(sass_source_dir, css_dir),
                 include_paths=COMMON_LOOKUP_DIRS + lookup_paths,
                 source_comments=source_comments,
                 output_style=output_style,
             )
             duration = datetime.now() - start
-            timing_info.append((system_sass_dir, css_dir, duration))
+            timing_info.append((sass_source_dir, css_dir, duration))
     return True
 
 
@@ -516,7 +578,11 @@ def collect_assets(systems, settings):
 
 
 @task
-@cmdopts([('background', 'b', 'Background mode')])
+@cmdopts([
+    ('background', 'b', 'Background mode'),
+    ('themes_dir=', '-td', 'The themes dir containing all themes (defaults to None)'),
+    ('themes=', '-t', 'The themes to add sass watchers for (defaults to None)'),
+])
 def watch_assets(options):
     """
     Watch for changes to asset files, and regenerate js/css
@@ -525,11 +591,25 @@ def watch_assets(options):
     if tasks.environment.dry_run:
         return
 
+    themes = getattr(options, 'themes', None)
+    themes_dir = getattr(options, 'themes_dir', None)
+    if not themes_dir and themes:
+        # We can not add theme sass watchers without knowing the directory that contains the themes.
+        raise ValueError('themes_dir must be provided for compiling theme sass.')
+    else:
+        theme_base_dir = path(themes_dir)
+
+    if isinstance(themes, basestring):
+        themes = themes.split(',')
+    else:
+        themes = themes if isinstance(themes, list) else [themes]
+
+    sass_directories = get_watcher_dirs(theme_base_dir, themes)
     observer = Observer()
 
     CoffeeScriptWatcher().register(observer)
-    SassWatcher().register(observer)
-    XModuleSassWatcher().register(observer)
+    SassWatcher().register(observer, sass_directories)
+    XModuleSassWatcher().register(observer, ['common/lib/xmodule/'])
     XModuleAssetsWatcher().register(observer)
 
     print("Starting asset watcher...")
@@ -598,4 +678,7 @@ def update_assets(args):
         collect_assets(args.system, args.settings)
 
     if args.watch:
-        call_task('pavelib.assets.watch_assets', options={'background': not args.debug})
+        call_task(
+            'pavelib.assets.watch_assets',
+            options={'background': not args.debug, 'themes_dir': args.themes_dir, 'themes': args.themes},
+        )

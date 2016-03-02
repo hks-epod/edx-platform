@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.sites.models import Site
 from django.core.cache import cache
+from django.contrib.staticfiles.storage import staticfiles_storage
 
 from microsite_configuration import microsite
 from microsite_configuration import page_title_breadcrumbs
@@ -77,8 +78,16 @@ def get_themed_template_path(relative_path, default_path, **kwargs):
 def get_template_path_with_theme(relative_path):
     """
     Returns template path in current site's theme if it finds one there otherwise returns same path.
-    :param relative_path:
-    :return: template path in current site's theme
+
+    Example:
+        >> get_template_path_with_theme('header')
+        '/red-theme/lms/templates/header.html'
+
+    Parameters:
+        relative_path (str): template's path relative to the templates directory e.g. 'footer.html'
+
+    Returns:
+        (str): template path in current site's theme
     """
     site_theme_dir = get_current_site_theme_dir()
     if not site_theme_dir:
@@ -107,9 +116,46 @@ def get_template_path_with_theme(relative_path):
         return relative_path
 
 
+def get_current_theme_template_dirs():
+    """
+    Returns template directories for the current theme.
+
+    Example:
+        >> get_current_theme_template_dirs('header.html')
+        ['/edx/app/edxapp/edx-platform/themes/red-theme/lms/templates/', ]
+
+    Returns:
+        (list): list of directories containing theme templates.
+    """
+    site_theme_dir = get_current_site_theme_dir()
+    if not site_theme_dir:
+        return None
+
+    base_theme_dir = get_base_theme_dir()
+    root_name = get_project_root_name()
+    template_path = "/".join([
+        base_theme_dir,
+        site_theme_dir,
+        root_name,
+        "templates"
+    ])
+
+    return [template_path]
+
+
 def strip_site_theme_templates_path(uri):
     """
-    :return: removes site templates theme path in uri
+    Remove site template theme path from the uri.
+
+    Example:
+        >> strip_site_theme_templates_path('/red-theme/lms/templates/header.html')
+        'header.html'
+
+    Arguments:
+        uri (str): template path from which to remove site theme path. e.g. '/red-theme/lms/templates/header.html'
+
+    Returns:
+        (str): template path with site theme path removed.
     """
     site_theme_dir = get_current_site_theme_dir()
     if not site_theme_dir:
@@ -128,7 +174,14 @@ def strip_site_theme_templates_path(uri):
 
 def get_current_site_theme_dir():
     """
-    :return: theme directory for current site
+    Return theme directory for the current site.
+
+    Example:
+        >> get_current_site_theme_dir()
+        'red-theme'
+
+    Returns:
+         (str): theme directory for current site
     """
     from edxmako.middleware import REQUEST_CONTEXT
     request = getattr(REQUEST_CONTEXT, 'request', None)
@@ -156,9 +209,18 @@ def get_current_site_theme_dir():
 
 def get_project_root_name():
     """
-    :return: component name of platform e.g lms, cms
-    """
+    Return root name for the current project
 
+    Example:
+        >> get_project_root_name()
+        'lms'
+        # from studio
+        >> get_project_root_name()
+        'cms'
+
+    Returns:
+        (str): component name of platform e.g lms, cms
+    """
     root = Path(settings.PROJECT_ROOT)
     if root.name == "":
         root = root.parent
@@ -167,22 +229,44 @@ def get_project_root_name():
 
 def get_base_theme_dir():
     """
-    :return: Base theme directory
+    Return base directory that contains all the themes.
+
+    Example:
+        >> get_base_theme_dir()
+        '/edx/app/edxapp/edx-platform/themes'
+
+    Returns:
+         (str): Base theme directory
     """
     return settings.COMPREHENSIVE_THEME_DIR
 
 
 def is_comprehensive_theming_enabled():
     """
-    :return boolen: boolean indicating of comprehensive theming is enabled or not
+    Returns boolean indicating whether comprehensive theming functionality is enabled or disabled.
+    Example:
+        >> is_comprehensive_theming_enabled()
+        True
+
+    Returns:
+         (bool): True if comprehensive theming is enabled else False
     """
     return True if settings.COMPREHENSIVE_THEME_DIR else False
 
 
 def get_site_theme_cache_key(site):
     """
-    :param site: site where key needs to generated
-    :return: a key to be used a cache key
+    Return cache key for the given site.
+
+    Example:
+        >> site = Site(domain='red-theme.org', name='Red Theme')
+        >> get_site_theme_cache_key(site)
+        'theming.site.red-theme.org'
+
+    Parameters:
+        site (django.contrib.sites.models.Site): site where key needs to generated
+    Returns:
+        (str): a key to be used as cache key
     """
     cache_key = "theming.site.{domain}".format(
         domain=site.domain
@@ -192,9 +276,17 @@ def get_site_theme_cache_key(site):
 
 def is_valid_hostname(hostname):
     """
-    Returns boolean indicating if given hostname is valid or not
-    :param hostname:
-    :return:
+    Return boolean indicating if given hostname is valid or not
+
+    Example:
+        >> is_valid_hostname('red-theme.org')
+        True
+
+    Parameters:
+        hostname (str): hostname that needs to be tested.
+    Returns:
+        (bool): True if given hostname is valid else False
+
     """
     if len(hostname) > 255 or "." not in hostname:
         return False
@@ -210,7 +302,35 @@ def is_valid_hostname(hostname):
 def cache_site_theme_dir(site, theme_dir):
     """
     Cache site's theme directory.
-    :param site:
-    :param theme_dir:
+
+    Example:
+        >> site = Site(domain='red-theme.org', name='Red Theme')
+        >> cache_site_theme_dir(site, 'red-theme')
+
+    Parameters:
+        site (django.contrib.sites.models.Site): site for to cache
+        theme_dir (str): theme directory for the given site
     """
     cache.set(get_site_theme_cache_key(site), theme_dir, settings.FOOTER_CACHE_TIMEOUT)
+
+
+def get_static_file_url(asset):
+    """
+    Returns url of the themed asset if asset is not themed than returns the default asset url.
+
+    Example:
+        >> get_static_file_url('css/lms-main.css', 'red-theme')
+        '/static/red-theme/css/lms-main.css'
+
+    Parameters:
+        asset (str): asset's path relative to the static files directory
+
+    Returns:
+        (str): static asset's url
+    """
+    theme = get_current_site_theme_dir()
+    try:
+        return staticfiles_storage.url(asset, theme)
+    except ValueError:
+        # in case of an error return url without theme applied
+        return staticfiles_storage.url(asset)
