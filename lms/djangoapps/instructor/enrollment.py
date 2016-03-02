@@ -21,7 +21,6 @@ from lang_pref import LANGUAGE_KEY
 from submissions import api as sub_api  # installed from the edx-submissions repository
 from student.models import anonymous_id_for_user
 from openedx.core.djangoapps.user_api.models import UserPreference
-from instructor.utils import get_module_for_student
 
 from microsite_configuration import microsite
 from xmodule.modulestore.django import modulestore
@@ -203,7 +202,7 @@ def send_beta_role_email(action, user, email_params):
     send_mail_to_student(user.email, email_params, language=get_user_email_language(user))
 
 
-def reset_student_attempts(course_id, student, module_state_key, context_user, delete_module=False):
+def reset_student_attempts(course_id, student, module_state_key, requesting_user, delete_module=False):
     """
     Reset student attempts for a problem. Optionally deletes all student state for the specified problem.
 
@@ -223,8 +222,8 @@ def reset_student_attempts(course_id, student, module_state_key, context_user, d
     user_id = anonymous_id_for_user(student, course_id)
     submission_cleared = False
     try:
-        block = get_module_for_student(context_user, module_state_key)
         # A block may have children. Clear state on children first.
+        block = modulestore().get_item(module_state_key)
         if block.has_children:
             for child in block.children:
                 try:
@@ -240,7 +239,8 @@ def reset_student_attempts(course_id, student, module_state_key, context_user, d
                 clear_student_state(
                     user_id=user_id,
                     course_id=unicode(course_id),
-                    item_id=unicode(module_state_key)
+                    item_id=unicode(module_state_key),
+                    requesting_user=requesting_user
                 )
                 submission_cleared = True
     except ItemNotFoundError:
