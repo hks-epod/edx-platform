@@ -87,7 +87,7 @@ class @Sequence
     else
       @$('.sequence-nav-button.button-previous').removeClass('disabled').removeAttr('disabled').click(@previous)
 
-    if @position == @contents.length and @nextUrl == null ## If the final position on the nav matches the total contents.
+    if @position == @contents.length and @nextUrl == 'None' ## If the final position on the nav matches the total contents.
       @$('.sequence-nav-button.button-next').addClass('disabled').attr('disabled', true)
     else
       @$('.sequence-nav-button.button-next').removeClass('disabled').removeAttr('disabled').click(@next)
