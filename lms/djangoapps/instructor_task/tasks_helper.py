@@ -57,7 +57,7 @@ from instructor_analytics.basic import (
     list_problem_responses
 )
 from instructor_analytics.csvs import format_dictlist
-from openassessment.data import AggregateOraData
+from openassessment.data import OraAggregateData
 from instructor_task.models import ReportStore, InstructorTask, PROGRESS
 from lms.djangoapps.lms_xblock.runtime import LmsPartitionService
 from openedx.core.djangoapps.course_groups.cohorts import get_cohort
@@ -1623,7 +1623,7 @@ def upload_ora2_data(
     task_progress.update_task_state(extra_meta=curr_step)
 
     try:
-        header, datarows = AggregateOraData.collect_ora2_data(course_id)
+        header, datarows = OraAggregateData.collect_ora2_data(course_id)
         rows = [header] + [row for row in datarows]
     # Update progress to failed regardless of error type
     except Exception:  # pylint: disable=broad-except

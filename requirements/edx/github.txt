@@ -78,8 +78,8 @@ git+https://github.com/edx/XBlock.git@xblock-0.4.4#egg=XBlock==0.4.4
 -e git+https://github.com/edx/acid-block.git@e46f9cda8a03e121a00c7e347084d142d22ebfb7#egg=acid-xblock
 
 # TODO: replace these with the actual ORA and submissions releases are ready.
-git+https://github.com/edx/edx-ora2.git@e7b982cd915aa042e1ab081e247c2f36f80a90a7#egg=ora2==1.0.0
--e git+https://github.com/edx/edx-submissions.git@f410cc619ade5bcebd3517d2ea3ec8f74bc17179#egg=edx-submissions==1.0.0
+git+https://github.com/edx/edx-ora2.git@cb85e7338171be0eff6923324c08d06cd6871173#egg=ora2==1.0.0
+-e git+https://github.com/edx/edx-submissions.git@feb2ae3d6896c78f98e47efb6718915880dae647#egg=edx-submissions==1.0.0
 
 git+https://github.com/edx/ease.git@release-2015-07-14#egg=ease==0.1.3
 git+https://github.com/edx/i18n-tools.git@v0.2#egg=i18n-tools==v0.2
