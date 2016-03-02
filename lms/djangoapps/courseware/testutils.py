@@ -71,8 +71,9 @@ class RenderXBlockTestMixin(object):
         with self.store.default_store(default_store):
             self.course = CourseFactory.create(**self.course_options())  # pylint: disable=attribute-defined-outside-init
             chapter = ItemFactory.create(parent=self.course, category='chapter')
+            section = ItemFactory.create(parent=chapter, category='sequential')
             self.html_block = ItemFactory.create(  # pylint: disable=attribute-defined-outside-init
-                parent=chapter,
+                parent=section,
                 category='html',
                 data="<p>Test HTML Content<p>"
             )
@@ -105,8 +106,8 @@ class RenderXBlockTestMixin(object):
         return response
 
     @ddt.data(
-        (ModuleStoreEnum.Type.mongo, 7),
-        (ModuleStoreEnum.Type.split, 5),
+        (ModuleStoreEnum.Type.mongo, 16),
+        (ModuleStoreEnum.Type.split, 6),
     )
     @ddt.unpack
     def test_courseware_html(self, default_store, mongo_calls):
