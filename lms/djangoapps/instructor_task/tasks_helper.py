@@ -57,7 +57,7 @@ from instructor_analytics.basic import (
     list_problem_responses
 )
 from instructor_analytics.csvs import format_dictlist
-from lms.djangoapps.instructor_task.models import ReportStore, InstructorTask, PROGRESS
+from instructor_task.models import ReportStore, InstructorTask, PROGRESS
 from lms.djangoapps.lms_xblock.runtime import LmsPartitionService
 from openedx.core.djangoapps.course_groups.cohorts import get_cohort
 from openedx.core.djangoapps.course_groups.models import CourseUserGroup

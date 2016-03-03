@@ -9,7 +9,7 @@ from mock import Mock, patch
 
 from django.http import QueryDict
 
-from lms.djangoapps.instructor_task.models import PROGRESS
+from instructor_task.models import PROGRESS
 from instructor_task.tests.test_base import (InstructorTaskTestCase,
                                              TEST_FAILURE_MESSAGE,
                                              TEST_FAILURE_EXCEPTION)
