@@ -31,7 +31,6 @@ def top_python_dirs(dirname):
 
 
 @task
-@needs('pavelib.prereqs.install_python_prereqs')
 @cmdopts([
     ("system=", "s", "System to act on"),
 ])
@@ -39,6 +38,10 @@ def find_fixme(options):
     """
     Run pylint on system code, only looking for fixme items.
     """
+    print 'DEBUG: importing install_python_prereqs'
+    from pavelib.prereqs import install_python_prereqs
+    print 'DEBUG: calling install_python_prereqs'
+    install_python_prereqs()
     num_fixme = 0
     systems = getattr(options, 'system', ALL_SYSTEMS).split(',')
 
