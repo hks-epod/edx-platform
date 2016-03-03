@@ -2327,7 +2327,6 @@ def list_financial_report_downloads(_request, course_id):
     return JsonResponse(response_payload)
 
 
-# Is the non_atomic_requests header correct?
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
