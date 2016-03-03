@@ -389,7 +389,7 @@ class TestInstructorEnrollmentStudentModule(SharedModuleStoreTestCase):
                 course_id=self.course_key,
                 module_state_key=msk
             ).count(), 1)
-        reset_student_attempts(self.course_key, self.user, msk, delete_module=True)
+        reset_student_attempts(self.course_key, self.user, msk, delete_module=True, requesting_user=self.user)
         self.assertEqual(
             StudentModule.objects.filter(
                 student=self.user,
@@ -425,7 +425,8 @@ class TestInstructorEnrollmentStudentModule(SharedModuleStoreTestCase):
         # Delete student state using the instructor dash
         reset_student_attempts(
             self.course_key, user, problem_location,
-            delete_module=True
+            delete_module=True,
+            requesting_user=user,
         )
 
         # Verify that the student's scores have been reset in the submissions API
@@ -451,7 +452,7 @@ class TestInstructorEnrollmentStudentModule(SharedModuleStoreTestCase):
         self.assertEqual(unrelated_state['attempts'], 12)
         self.assertEqual(unrelated_state['brains'], 'zombie')
 
-        reset_student_attempts(self.course_key, self.user, self.parent.location)
+        reset_student_attempts(self.course_key, self.user, self.parent.location, requesting_user=self.user)
 
         parent_state = json.loads(self.get_state(self.parent.location))
         self.assertEqual(json.loads(self.get_state(self.parent.location))['attempts'], 0)
@@ -478,7 +479,13 @@ class TestInstructorEnrollmentStudentModule(SharedModuleStoreTestCase):
         self.assertEqual(unrelated_state['attempts'], 12)
         self.assertEqual(unrelated_state['brains'], 'zombie')
 
-        reset_student_attempts(self.course_key, self.user, self.parent.location, delete_module=True)
+        reset_student_attempts(
+            self.course_key,
+            self.user,
+            self.parent.location,
+            delete_module=True,
+            requesting_user=self.user
+        )
 
         self.assertRaises(StudentModule.DoesNotExist, self.get_state, self.parent.location)
         self.assertRaises(StudentModule.DoesNotExist, self.get_state, self.child.location)
