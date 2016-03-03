@@ -258,9 +258,9 @@ class ModuleI18nService(object):
         self.translator = django.utils.translation
         if block:
             xblock_resource = block.unmixed_class.__module__
-            xblock_locale_dir = '/conf/locale'
+            xblock_locale_dir = '/translations'
             xblock_locale_path = resource_filename(xblock_resource, xblock_locale_dir)
-            xblock_domain = 'django'
+            xblock_domain = 'text'
             selected_language = get_language()
             try:
                 self.translator = gettext.translation(

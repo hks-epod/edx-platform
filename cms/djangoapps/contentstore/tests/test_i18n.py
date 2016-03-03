@@ -128,15 +128,15 @@ class TestModuleI18nService(ModuleStoreTestCase):
                 'fr': {'Hello': 'fr-hello-world'},
             },
         )
-        localedir = '/conf/locale'
+        localedir = '/translations'
         translation.activate("es")
-        with mock.patch('gettext.translation', return_value=_translator(domain='domain', localedir=localedir,
+        with mock.patch('gettext.translation', return_value=_translator(domain='text', localedir=localedir,
                                                                         languages=[get_language()])):
             i18n_service = self.get_module_i18n_service(self.descriptor)
             self.assertEqual(i18n_service.ugettext('Hello'), 'es-hello-world')
 
         translation.activate("ar")
-        with mock.patch('gettext.translation', return_value=_translator(domain='domain', localedir=localedir,
+        with mock.patch('gettext.translation', return_value=_translator(domain='text', localedir=localedir,
                                                                         languages=[get_language()])):
             i18n_service = self.get_module_i18n_service(self.descriptor)
             self.assertEqual(i18n_service.ugettext('Hello'), 'Hello')
@@ -144,7 +144,7 @@ class TestModuleI18nService(ModuleStoreTestCase):
             self.assertNotEqual(i18n_service.ugettext('Hello'), 'es-hello-world')
 
         translation.activate("fr")
-        with mock.patch('gettext.translation', return_value=_translator(domain='domain', localedir=localedir,
+        with mock.patch('gettext.translation', return_value=_translator(domain='text', localedir=localedir,
                                                                         languages=[get_language()])):
             i18n_service = self.get_module_i18n_service(self.descriptor)
             self.assertEqual(i18n_service.ugettext('Hello'), 'fr-hello-world')
