@@ -29,7 +29,7 @@ class InstructorService(object):
 
     def delete_student_attempt(self, student_identifier, course_id, content_id, requesting_user):
         """
-        Deletes student state for a problem. requsting_user may be kept as an audit trail.
+        Deletes student state for a problem. requesting_user may be kept as an audit trail.
 
         Takes some of the following query parameters
             - student_identifier is an email or username
