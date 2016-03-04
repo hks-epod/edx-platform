@@ -62,10 +62,6 @@ git clean -qxfd
 case "$TEST_SUITE" in
 
     "quality")
-        echo "environment variables:"
-        printenv
-        echo "paver info"
-        pip show paver
         echo "git show -1"
         git show -1
         echo "Finding fixme's and storing report..."
