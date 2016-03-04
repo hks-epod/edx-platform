@@ -66,25 +66,6 @@ case "$TEST_SUITE" in
         paver find_fixme > fixme.log || { cat fixme.log; EXIT=1; }
         echo "Finding pep8 violations and storing report..."
         paver run_pep8 > pep8.log || { cat pep8.log; EXIT=1; }
-        echo "Finding pylint violations and storing in report..."
-        paver run_pylint -l $PYLINT_THRESHOLD > pylint.log || { cat pylint.log; EXIT=1; }
-
-        mkdir -p reports
-        echo "Finding jshint violations and storing report..."
-        paver run_jshint -l $JSHINT_THRESHOLD > jshint.log || { cat jshint.log; EXIT=1; }
-        echo "Running code complexity report (python)."
-        paver run_complexity > reports/code_complexity.log || echo "Unable to calculate code complexity. Ignoring error."
-        # Run quality task. Pass in the 'fail-under' percentage to diff-quality
-        paver run_quality -p 100 || EXIT=1
-
-        # Need to create an empty test result so the post-build
-        # action doesn't fail the build.
-        cat > reports/quality.xml <<END
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="quality" tests="1" errors="0" failures="0" skip="0">
-<testcase classname="quality" name="quality" time="0.604"></testcase>
-</testsuite>
-END
         exit $EXIT
         ;;
 
