@@ -72,17 +72,7 @@ case "$TEST_SUITE" in
         ;;
 
     "lms-unit")
-        case "$SHARD" in
-            "1")
-                paver help test_system -s lms --extra_args="--attr='shard_1' --with-flaky" --cov_args="-p"
-                ;;
-            "2")
-                paver help test_system -s lms --extra_args="--attr='shard_1=False' --with-flaky" --cov_args="-p"
-                ;;
-            *)
-                paver help test_system -s lms --extra_args="--with-flaky" --cov_args="-p"
-                ;;
-        esac
+        paver install_prereqs
         ;;
 
     "cms-unit")
