@@ -62,6 +62,12 @@ git clean -qxfd
 case "$TEST_SUITE" in
 
     "quality")
+        echo "environment variables:"
+        printenv
+        echo "paver info"
+        pip show paver
+        echo "git show -1"
+        git show -1
         echo "Finding fixme's and storing report..."
         paver find_fixme > fixme.log || { cat fixme.log; EXIT=1; }
         echo "Finding pep8 violations and storing report..."
