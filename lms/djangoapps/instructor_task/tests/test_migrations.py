@@ -49,9 +49,12 @@ class TestTextFields(TestMigrations):
 
     def test_migrated_backward(self):
         """
-        Verify that migrate to backwards does not loose any data.
+        Verify that migrate to backwards does not lose any data.
         """
-        self.migrate_forwards()
-        self.migrate_backwards()
+        # When test start app is 0001_initial migration due to teardown moving app to forward at
+        # 0002_auto_20160208_0810 so that we can test migrate_backwards() back to some 0001_initial state.
+        self.migrate_forwards() #  move to 0002_auto_20160208_0810
+        self.migrate_backwards() # will move back to 0001_initial
+
         task_after_backward_migration = InstructorTask.objects.get(id=self.task.id)
         self.assertEqual(task_after_backward_migration.task_input, json.dumps(self.task_input))
