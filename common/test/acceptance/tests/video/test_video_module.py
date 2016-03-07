@@ -1216,8 +1216,11 @@ class DragAndDropTest(VideoBaseTest):
         action = ActionChains(self.browser)
         action.drag_and_drop_by_offset(captions, 0, -50).perform()
         captions_dropped_location = captions.location
-        self.assertEqual(captions_dropped_location.get('y') + 50,
-            captions_starting_location.get('y'), 'Closed captions did not get dragged.')
+        self.assertEqual(
+            captions_dropped_location.get('y') + 50,
+            captions_starting_location.get('y'),
+            'Closed captions did not get dragged.'
+        )
 
 
 @attr('a11y')
