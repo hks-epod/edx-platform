@@ -26,9 +26,12 @@ from edxmako.shortcuts import render_to_string
 from edxmako.template import Template
 from microsite_configuration import microsite
 from xmodule.modulestore.django import modulestore
+from openedx.core.djangoapps.commerce.utils import ecommerce_api_client
 
 
 log = logging.getLogger(__name__)
+
+CREDIT_PROVIDERS_CACHE_KEY = 'credit.providers.api.data'
 
 
 def send_credit_notifications(username, course_key):
@@ -67,6 +70,8 @@ def send_credit_notifications(username, course_key):
         # strip enclosing angle brackets from 'logo_image' cache 'Content-ID'
         logo_image_id = logo_image.get('Content-ID', '')[1:-1]
 
+    providers = _get_credit_providers(user, course_key)
+
     context = {
         'full_name': user.get_full_name(),
         'platform_name': settings.PLATFORM_NAME,
@@ -75,6 +80,7 @@ def send_credit_notifications(username, course_key):
         'dashboard_link': dashboard_link,
         'credit_course_link': credit_course_link,
         'tracking_pixel': tracking_pixel,
+        'providers': providers,
     }
 
     # create the root email message
@@ -180,3 +186,32 @@ def _email_url_parser(url_name, extra_param=None):
     dashboard_url_path = reverse(url_name) + extra_param if extra_param else reverse(url_name)
     dashboard_link_parts = ("https", site_name, dashboard_url_path, '', '', '')
     return urlparse.urlunparse(dashboard_link_parts)
+
+
+def _get_credit_providers(user, course_key):
+    """Get the course production information from ecommerce and parse the data to get providers.
+
+    Arguments:
+        user (User): The user object.
+        course_key (CourseKey): The identifier for the course.
+
+    Returns:
+        list, containing course providers.
+    """
+    cache_key = '{key_prefix}.{id}'.format(key_prefix=CREDIT_PROVIDERS_CACHE_KEY, id=course_key)
+    providers_data = cache.get(cache_key)
+
+    if not providers_data:
+        providers_data = []
+        response = ecommerce_api_client(user).courses(unicode(course_key) + '/?include_products=1').get()
+        for product in response.get('products'):
+            providers_data.extend(
+                [
+                    attr.get('value') for attr in product.get('attribute_values')
+                    if attr.get('name') == 'credit_provider'
+                ]
+            )
+
+        cache.set(cache_key, providers_data)
+
+    return providers_data

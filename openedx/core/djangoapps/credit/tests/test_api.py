@@ -2,6 +2,7 @@
 Tests for the API functions in the credit app.
 """
 import datetime
+import json
 import unittest
 
 import ddt
@@ -9,13 +10,16 @@ from django.conf import settings
 from django.core import mail
 from django.test.utils import override_settings
 from django.db import connection, transaction
+import httpretty
 from opaque_keys.edx.keys import CourseKey
 import pytz
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory
 
 from util.date_utils import from_timestamp
+
 from openedx.core.djangoapps.credit import api
+from openedx.core.djangoapps.credit.email_utils import _get_credit_providers
 from openedx.core.djangoapps.credit.exceptions import (
     InvalidCreditRequirements,
     InvalidCreditCourse,
@@ -31,7 +35,9 @@ from openedx.core.djangoapps.credit.models import (
     CreditRequirementStatus,
     CreditEligibility
 )
+from lms.djangoapps.commerce.tests import TEST_API_URL, TEST_API_SIGNING_KEY
 from student.tests.factories import UserFactory
+
 
 TEST_CREDIT_PROVIDER_SECRET_KEY = "931433d583c84ca7ba41784bad3232e6"
 
@@ -92,6 +98,45 @@ class CreditRequirementApiTests(CreditApiTestBase):
     """
     Test Python API for credit requirements and eligibility.
     """
+    def _mock_ecommerce_courses_api(self, body, status=200):
+        """ Mock GET requests to the ecommerce course API endpoint. """
+        httpretty.reset()
+        httpretty.register_uri(
+            httpretty.GET, "{}/courses/{}/?include_products=1".format(TEST_API_URL, unicode(self.course_key)),
+            status=status,
+            body=json.dumps(body), content_type="application/json",
+        )
+
+    @httpretty.activate
+    @override_settings(ECOMMERCE_API_URL=TEST_API_URL, ECOMMERCE_API_SIGNING_KEY=TEST_API_SIGNING_KEY)
+    def test_get_credit_providers_method(self):
+        """Verify that parsed providers list is returns after getting course production information."""
+        user = UserFactory.create()
+        expected_providers = [u'ASU', u'hogwarts']
+        self._mock_ecommerce_courses_api(self.course_api_response_data(), 200)
+        response_providers = _get_credit_providers(user, self.course_key)
+        self.assertEqual(expected_providers, response_providers)
+
+    @httpretty.activate
+    @override_settings(ECOMMERCE_API_URL=TEST_API_URL, ECOMMERCE_API_SIGNING_KEY=TEST_API_SIGNING_KEY)
+    def test_get_credit_providers_caching(self):
+        """Verify that providers list is cached for 5 minutes."""
+        self._mock_ecommerce_courses_api(self.course_api_response_data(), 200)
+
+        user = UserFactory.create()
+
+        expected_providers = [u'ASU', u'hogwarts']
+
+        # Warm up the cache.
+        response_providers = _get_credit_providers(user, self.course_key)
+        self.assertEqual(expected_providers, response_providers)
+
+        # Hit the cache.
+        response_providers = _get_credit_providers(user, self.course_key)
+        self.assertEqual(expected_providers, response_providers)
+
+        # Verify only one request was made.
+        self.assertEqual(len(httpretty.httpretty.latest_requests), 1)
 
     @ddt.data(
         [
@@ -392,10 +437,14 @@ class CreditRequirementApiTests(CreditApiTestBase):
         req_status = api.get_credit_requirement_status(self.course_key, "bob", namespace="grade", name="grade")
         self.assertEqual(len(req_status), 0)
 
+    @httpretty.activate
+    @override_settings(ECOMMERCE_API_URL=TEST_API_URL, ECOMMERCE_API_SIGNING_KEY=TEST_API_SIGNING_KEY)
     def test_satisfy_all_requirements(self):
         """ Test the credit requirements, eligibility notification, email
         content caching for a credit course.
         """
+        self._mock_ecommerce_courses_api(self.course_api_response_data(), 200)
+
         # Configure a course with two credit requirements
         self.add_credit_course()
         CourseFactory.create(org='edX', number='DemoX', display_name='Demo_Course')
@@ -433,7 +482,7 @@ class CreditRequirementApiTests(CreditApiTestBase):
         self.assertFalse(api.is_user_eligible_for_credit("bob", self.course_key))
 
         # Satisfy the other requirement
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             api.set_credit_requirement_status(
                 "bob",
                 self.course_key,
@@ -548,6 +597,108 @@ class CreditRequirementApiTests(CreditApiTestBase):
         )
         self.assertEqual(len(req_status), 1)
         self.assertEqual(req_status[0]["status"], None)
+
+    def course_api_response_data(self):
+        """ecommerce course api response data."""
+
+        return {
+            "id": "course-v1:arb+cs999+2015_t2",
+            "url": "http://localhost:8002/api/v2/courses/course-v1:arb+cs999+2015_t2/",
+            "name": "edX Demonstration Course",
+            "verification_deadline": "2023-09-12T23:59:00Z",
+            "type": "credit",
+            "products_url": "http://localhost:8002/api/v2/courses/course-v1:arb+cs999+2015_t2/products/",
+            "last_edited": "2016-03-06T09:51:10Z",
+            "products": [
+                {
+                    "id": 11,
+                    "url": "http://localhost:8002/api/v2/products/11/",
+                    "structure": "child",
+                    "product_class": "Seat",
+                    "title": "",
+                    "price": 1,
+                    "expires": '2016-03-06T09:51:10Z',
+                    "attribute_values": [
+                        {
+                            "name": "certificate_type",
+                            "value": "credit"
+                        },
+                        {
+                            "name": "course_key",
+                            "value": "course-v1:edX+CS420+2016"
+                        },
+                        {
+                            "name": "credit_hours",
+                            "value": 1
+                        },
+                        {
+                            "name": "credit_provider",
+                            "value": "ASU"
+                        },
+                        {
+                            "name": "id_verification_required",
+                            "value": False
+                        }
+                    ],
+                    "is_available_to_buy": False,
+                    "stockrecords": []
+                },
+                {
+                    "id": 10,
+                    "url": "http://localhost:8002/api/v2/products/10/",
+                    "structure": "child",
+                    "product_class": "Seat",
+                    "title": "",
+                    "price": 1,
+                    "expires": '2016-03-06T09:51:10Z',
+                    "attribute_values": [
+                        {
+                            "name": "certificate_type",
+                            "value": "credit"
+                        },
+                        {
+                            "name": "course_key",
+                            "value": "course-v1:arb+cs999+2015_t2"
+                        },
+                        {
+                            "name": "credit_hours",
+                            "value": 1
+                        },
+                        {
+                            "name": "credit_provider",
+                            "value": "hogwarts"
+                        },
+                        {
+                            "name": "id_verification_required",
+                            "value": False
+                        }
+                    ],
+                    "is_available_to_buy": False,
+                    "stockrecords": []
+                },
+                {
+                    "id": 9,
+                    "url": "http://localhost:8002/api/v2/products/9/",
+                    "structure": "parent",
+                    "product_class": "Seat",
+                    "title": "Seat in edX Demonstration Course",
+                    "price": 1,
+                    "expires": '2016-03-06T09:51:10Z',
+                    "attribute_values": [
+                        {
+                            "name": "course_key",
+                            "value": "course-v1:arb+cs999+2015_t2"
+                        },
+                        {
+                            "name": "id_verification_required",
+                            "value": False
+                        }
+                    ],
+                    "is_available_to_buy": False,
+                    "stockrecords": []
+                }
+            ]
+        }
 
 
 @ddt.ddt
