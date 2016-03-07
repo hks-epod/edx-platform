@@ -4,7 +4,7 @@
 
     define(
     'video/09_video_caption.js',
-    ['video/00_sjson.js', 'video/00_async_process.js', 'draggabilly'],
+    ['video/00_sjson.js', 'video/00_async_process.js', 'js/vendor/draggabilly.pkgd'],
     function (Sjson, AsyncProcess, Draggabilly) {
 
         /**
