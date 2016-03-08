@@ -4,8 +4,6 @@ https://www.caktusgroup.com/blog/2016/02/02/writing-unit-tests-django-migrations
 """
 # pylint: disable=redefined-outer-name
 
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.recorder import MigrationRecorder
 from django.test import TransactionTestCase
 from django.core.management import call_command
@@ -22,14 +20,13 @@ class TestMigrations(TransactionTestCase):
         assert self.migrate_from and self.migrate_to, \
             "TestCase '{}' must define migrate_from and migrate_from properties".format(type(self).__name__)
         assert self.app, "app must be define in the TestCase"
-        self.initial_migration = MigrationRecorder.Migration.objects.filter(app=self.app).last().name
-        self.executor = MigrationExecutor(connection)
+        self.most_recent_migration = MigrationRecorder.Migration.objects.filter(app=self.app).last().name
 
     def tearDown(self):
         """ Back to initial migration """
         super(TestMigrations, self).tearDown()
-        call_command("migrate", self.app, self.initial_migration)
-        self._check_migration_state(self.initial_migration)
+        call_command("migrate", self.app, self.most_recent_migration)
+        self._check_migration_state(self.most_recent_migration)
 
     def _check_migration_state(self, migration_name):
         """ Veirfy the migration from djano migration table"""
@@ -41,12 +38,12 @@ class TestMigrations(TransactionTestCase):
         Execute migration from state to another.
         """
         # Reverse to the original migration
-        self.executor.migrate([(self.app, self.migrate_from)])
+        call_command("migrate", self.app, migrate_from)
 
         self.setUpBeforeMigration()
 
         # Run the migration to test
-        self.executor.migrate([(self.app, self.migrate_to)])
+        call_command("migrate", self.app, migrate_to)
 
     def setUpBeforeMigration(self):  # pylint: disable=invalid-name
         """
@@ -57,7 +54,7 @@ class TestMigrations(TransactionTestCase):
 
     def migrate_forwards(self):
         """ Execute migration to forward state. """
-        self.execute_migration(migrate_from, migrate_to)
+        self.execute_migration(self.migrate_from, self.migrate_to)
 
     def migrate_backwards(self):
         """ Execute migration to backward state. """
