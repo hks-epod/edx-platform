@@ -34,7 +34,19 @@
             </p>
 
             <p>
-              ${_(u"Congratulations! You are eligible to receive course credit for successfully completing your {platform_name} course! {link_start}Get your credit now.{link_end}").format(
+               ${_(u"Congratulations! You are eligible to receive course credit from ")}
+                % if providers:
+                     <ul>
+                       % for provider in providers:
+                        <li>
+                            ${ provider }
+                        </li>
+                       % endfor
+                     </ul>
+                % else:
+                    ${_(u"Charter Oak State College")}
+                % endif
+               ${_(u" for successfully completing your {platform_name} course! {link_start}Get your credit now.{link_end}").format(
                 link_start=u'<a href="{dashboard_url}">'.format(
                     dashboard_url=dashboard_link
                 ),
