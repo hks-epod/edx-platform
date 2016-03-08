@@ -98,6 +98,26 @@ class CreditRequirementApiTests(CreditApiTestBase):
     """
     Test Python API for credit requirements and eligibility.
     """
+    def setUp(self, **kwargs):
+        super(CreditRequirementApiTests, self).setUp()
+        self.requirements = [
+            {
+                "namespace": "grade",
+                "name": "grade",
+                "display_name": "Grade",
+                "criteria": {
+                    "min_grade": 0.8
+                },
+            },
+            {
+                "namespace": "reverification",
+                "name": "i4x://edX/DemoX/edx-reverification-block/assessment_uuid",
+                "display_name": "Assessment 1",
+                "criteria": {},
+            }
+        ]
+        self.providers_data = [u'ASU', u'hogwarts']
+
     def _mock_ecommerce_courses_api(self, body, status=200):
         """ Mock GET requests to the ecommerce course API endpoint. """
         httpretty.reset()
@@ -125,7 +145,7 @@ class CreditRequirementApiTests(CreditApiTestBase):
 
         user = UserFactory.create()
 
-        expected_providers = [u'ASU', u'hogwarts']
+        expected_providers = self.providers_data
 
         # Warm up the cache.
         response_providers = _get_credit_providers(user, self.course_key)
@@ -449,23 +469,7 @@ class CreditRequirementApiTests(CreditApiTestBase):
         self.add_credit_course()
         CourseFactory.create(org='edX', number='DemoX', display_name='Demo_Course')
 
-        requirements = [
-            {
-                "namespace": "grade",
-                "name": "grade",
-                "display_name": "Grade",
-                "criteria": {
-                    "min_grade": 0.8
-                },
-            },
-            {
-                "namespace": "reverification",
-                "name": "i4x://edX/DemoX/edx-reverification-block/assessment_uuid",
-                "display_name": "Assessment 1",
-                "criteria": {},
-            }
-        ]
-        api.set_credit_requirements(self.course_key, requirements)
+        api.set_credit_requirements(self.course_key, self.requirements)
 
         user = UserFactory.create(username=self.USER_INFO['username'], password=self.USER_INFO['password'])
 
@@ -474,8 +478,8 @@ class CreditRequirementApiTests(CreditApiTestBase):
             api.set_credit_requirement_status(
                 user.username,
                 self.course_key,
-                requirements[0]["namespace"],
-                requirements[0]["name"]
+                self.requirements[0]["namespace"],
+                self.requirements[0]["name"]
             )
 
         # The user should not be eligible (because only one requirement is satisfied)
@@ -486,8 +490,8 @@ class CreditRequirementApiTests(CreditApiTestBase):
             api.set_credit_requirement_status(
                 "bob",
                 self.course_key,
-                requirements[1]["namespace"],
-                requirements[1]["name"]
+                self.requirements[1]["namespace"],
+                self.requirements[1]["name"]
             )
 
         # Now the user should be eligible
@@ -519,6 +523,9 @@ class CreditRequirementApiTests(CreditApiTestBase):
         self.assertIsNotNone(image_id)
         self.assertIn(image_id, html_content_first)
 
+        for provider in self.providers_data:
+            self.assertIn(provider, html_content_first)
+
         # Delete the eligibility entries and satisfy the user's eligibility
         # requirement again to trigger eligibility notification
         CreditEligibility.objects.all().delete()
@@ -526,8 +533,8 @@ class CreditRequirementApiTests(CreditApiTestBase):
             api.set_credit_requirement_status(
                 "bob",
                 self.course_key,
-                requirements[1]["namespace"],
-                requirements[1]["name"]
+                self.requirements[1]["namespace"],
+                self.requirements[1]["name"]
             )
 
         # Credit eligibility email should be sent
@@ -542,8 +549,8 @@ class CreditRequirementApiTests(CreditApiTestBase):
         api.set_credit_requirement_status(
             "bob",
             self.course_key,
-            requirements[0]["namespace"],
-            requirements[0]["name"],
+            self.requirements[0]["namespace"],
+            self.requirements[0]["name"],
             status="failed"
         )
         self.assertTrue(api.is_user_eligible_for_credit("bob", self.course_key))
@@ -597,6 +604,74 @@ class CreditRequirementApiTests(CreditApiTestBase):
         )
         self.assertEqual(len(req_status), 1)
         self.assertEqual(req_status[0]["status"], None)
+
+    @httpretty.activate
+    @override_settings(ECOMMERCE_API_URL=TEST_API_URL, ECOMMERCE_API_SIGNING_KEY=TEST_API_SIGNING_KEY)
+    def test_eligibility_email_with_default_provider(self):
+        """ Test the credit requirements, eligibility notification, email
+        and providers when api returns empty data.
+        """
+        self._mock_ecommerce_courses_api({'products': []}, 200)
+
+        # Configure a course with two credit requirements
+        self.add_credit_course()
+        CourseFactory.create(org='edX', number='DemoX', display_name='Demo_Course')
+
+        api.set_credit_requirements(self.course_key, self.requirements)
+
+        user = UserFactory.create(username=self.USER_INFO['username'], password=self.USER_INFO['password'])
+
+        # Satisfy one of the requirements, but not the other
+        with self.assertNumQueries(11):
+            api.set_credit_requirement_status(
+                user.username,
+                self.course_key,
+                self.requirements[0]["namespace"],
+                self.requirements[0]["name"]
+            )
+
+        # The user should not be eligible (because only one requirement is satisfied)
+        self.assertFalse(api.is_user_eligible_for_credit("bob", self.course_key))
+
+        # Satisfy the other requirement
+        with self.assertNumQueries(16):
+            api.set_credit_requirement_status(
+                "bob",
+                self.course_key,
+                self.requirements[1]["namespace"],
+                self.requirements[1]["name"]
+            )
+
+        # Now the user should be eligible
+        self.assertTrue(api.is_user_eligible_for_credit("bob", self.course_key))
+
+        # Credit eligibility email should be sent
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Course Credit Eligibility')
+
+        # Now verify them email content
+        email_payload_first = mail.outbox[0].attachments[0]._payload  # pylint: disable=protected-access
+
+        # Test that email has two payloads [multipart (plain text and html
+        # content), attached image]
+        self.assertEqual(len(email_payload_first), 2)
+        # pylint: disable=protected-access
+        self.assertIn('text/plain', email_payload_first[0]._payload[0]['Content-Type'])
+        # pylint: disable=protected-access
+        self.assertIn('text/html', email_payload_first[0]._payload[1]['Content-Type'])
+        self.assertIn('image/png', email_payload_first[1]['Content-Type'])
+
+        # Now check that html email content has same logo image 'Content-ID'
+        # as the attached logo image 'Content-ID'
+        email_image = email_payload_first[1]
+        html_content_first = email_payload_first[0]._payload[1]._payload  # pylint: disable=protected-access
+
+        # strip enclosing angle brackets from 'logo_image' cache 'Content-ID'
+        image_id = email_image.get('Content-ID', '')[1:-1]
+        self.assertIsNotNone(image_id)
+        self.assertIn(image_id, html_content_first)
+        self.assertIn('Charter Oak State College', html_content_first)
+
 
     def course_api_response_data(self):
         """ecommerce course api response data."""
