@@ -11,7 +11,7 @@ from pipeline.utils import guess_type
 
 from openedx.core.djangoapps.theming.helpers import get_static_file_url
 
-register = template.Library()
+register = template.Library()  # pylint: disable=invalid-name
 
 
 class ThemeStylesheetNode(StylesheetNode):
@@ -49,12 +49,12 @@ class ThemeJavascriptNode(JavascriptNode):
 
 
 @register.tag
-def stylesheet(parser, token):
+def stylesheet(parser, token):  # pylint: disable=unused-argument
     """
     Template tag to serve stylesheets from django-pipeline. This definition uses the theming aware ThemeStyleSheetNode.
     """
     try:
-        tag_name, name = token.split_contents()
+        _, name = token.split_contents()
     except ValueError:
         raise template.TemplateSyntaxError(
             '%r requires exactly one argument: the name of a group in the PIPELINE_CSS setting' %
@@ -64,12 +64,12 @@ def stylesheet(parser, token):
 
 
 @register.tag
-def javascript(parser, token):
+def javascript(parser, token):  # pylint: disable=unused-argument
     """
     Template tag to serve javascript from django-pipeline. This definition uses the theming aware ThemeJavascriptNode.
     """
     try:
-        tag_name, name = token.split_contents()
+        _, name = token.split_contents()
     except ValueError:
         raise template.TemplateSyntaxError(
             '%r requires exactly one argument: the name of a group in the PIPELINE_JS setting' %

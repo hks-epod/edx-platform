@@ -6,7 +6,7 @@ See https://docs.djangoproject.com/en/1.8/ref/contrib/staticfiles/
 import os.path
 
 from django.core.exceptions import ImproperlyConfigured
-from django.contrib.staticfiles.storage import StaticFilesStorage, CachedFilesMixin
+from django.contrib.staticfiles.storage import StaticFilesStorage
 from django.utils._os import safe_join
 
 from openedx.core.djangoapps.theming.helpers import (
@@ -80,7 +80,6 @@ class ComprehensiveThemingAwareMixin(object):
 
 class CachedComprehensiveThemingStorage(
         ComprehensiveThemingAwareMixin,
-        CachedFilesMixin,
         StaticFilesStorage
 ):
     """
