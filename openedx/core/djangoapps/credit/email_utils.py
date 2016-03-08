@@ -80,7 +80,7 @@ def send_credit_notifications(username, course_key):
         'dashboard_link': dashboard_link,
         'credit_course_link': credit_course_link,
         'tracking_pixel': tracking_pixel,
-        'providers': providers,
+        'providers': providers if providers else None,
     }
 
     # create the root email message
