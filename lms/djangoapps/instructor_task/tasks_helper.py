@@ -1627,6 +1627,7 @@ def upload_ora2_data(
         rows = [header] + [row for row in datarows]
     # Update progress to failed regardless of error type
     except Exception:  # pylint: disable=broad-except
+        TASK_LOG.exception('Failed to get ORA data.')
         task_progress.failed = 1
         curr_step = {'step': "Error while collecting data"}
 
