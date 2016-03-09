@@ -80,4 +80,4 @@ def in_preview_mode():
     """
     hostname = get_current_request_hostname()
     preview_lms_base = settings.FEATURES.get('PREVIEW_LMS_BASE', None)
-    return bool(preview_lms_base and hostname and re.match(preview_lms_base, hostname))
+    return bool(preview_lms_base and hostname and re.match(preview_lms_base.split(':')[0], hostname))
