@@ -3,15 +3,30 @@ describe "RequireJS namespacing", ->
 
         # Jasmine does not provide a way to use the typeof operator. We need
         # to create our own custom matchers so that a TypeError is not thrown.
-        @addMatchers
+        jasmine.addMatchers
             requirejsTobeUndefined: ->
-                typeof requirejs is "undefined"
+                {
+                compare: ->
+                    {
+                        pass: typeof requirejs is "undefined"
+                    }
+                }
 
             requireTobeUndefined: ->
-                typeof require is "undefined"
+                {
+                compare: ->
+                    {
+                        pass: typeof require is "undefined"
+                    }
+                }
 
             defineTobeUndefined: ->
-                typeof define is "undefined"
+                {
+                compare: ->
+                    {
+                        pass: typeof define is "undefined"
+                    }
+                }
 
 
     it "check that the RequireJS object is present in the global namespace", ->

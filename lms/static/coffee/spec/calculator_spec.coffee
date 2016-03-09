@@ -43,7 +43,7 @@ describe 'Calculator', ->
       # wait until focus() is called.
       didFocus = false
       runs ->
-          spyOn($.fn, 'focus').andCallFake (elementName) -> didFocus = true
+          spyOn($.fn, 'focus').and.callFake (elementName) -> didFocus = true
           @calculator.toggle(jQuery.Event("click"))
 
       waitsFor (-> didFocus), "focus() should have been called on the input", 1000
@@ -305,10 +305,10 @@ describe 'Calculator', ->
             'prevHint': calc
 
       $.each(cases, (key, data) ->
-        calc.hideHint.reset()
-        calc.prevHint.reset()
-        calc.nextHint.reset()
-        $.fn.focus.reset()
+        calc.hideHint.calls.reset()
+        calc.prevHint.calls.reset()
+        calc.nextHint.calls.reset()
+        $.fn.focus.calls.reset()
 
         e = jQuery.Event('keydown', data.event or {});
         value = calc.handleKeyDownOnHint(e)
@@ -334,7 +334,7 @@ describe 'Calculator', ->
   describe 'calculate', ->
     beforeEach ->
       $('#calculator_input').val '1+2'
-      spyOn($, 'getWithPrefix').andCallFake (url, data, callback) ->
+      spyOn($, 'getWithPrefix').and.callFake (url, data, callback) ->
         callback({ result: 3 })
       @calculator.calculate()
 
