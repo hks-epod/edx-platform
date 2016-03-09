@@ -248,9 +248,10 @@ def reset_student_attempts(course_id, student, module_state_key, requesting_user
         log.warning("Could not find %s in modulestore when attempting to reset attempts.", module_state_key)
 
     # Reset the student's score in the submissions API, if xblock.clear_student_state has not done so already.
-    # TODO: Remove this once we've finalized and communicated how xblocks should handle clear_student_state
-    # and made sure that other xblocks relying on the submission api understand this is going away.
     # We need to do this before retrieving the `StudentModule` model, because a score may exist with no student module.
+
+    # TODO: Should the LMS know about sub_api and call this reset, or should it generically call it on all of its
+    # xblock services as well?  See JIRA ARCH-26.
     if delete_module and not submission_cleared:
         sub_api.reset_score(
             user_id,

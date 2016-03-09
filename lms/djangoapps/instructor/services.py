@@ -67,8 +67,8 @@ class InstructorService(object):
                     course_id,
                     student,
                     module_state_key,
-                    delete_module=True,
                     requesting_user=requesting_user,
+                    delete_module=True,
                 )
             except (StudentModule.DoesNotExist, enrollment.sub_api.SubmissionError):
                 err_msg = (

@@ -90,7 +90,7 @@ class InstructorServiceTests(SharedModuleStoreTestCase):
             self.student.username,
             unicode(self.course.id),
             'foo/bar/baz',
-            requesting_user=self.student.username,
+            requesting_user=self.student,
         )
         self.assertIsNone(result)
 
@@ -103,7 +103,7 @@ class InstructorServiceTests(SharedModuleStoreTestCase):
             'bad_student',
             unicode(self.course.id),
             'foo/bar/baz',
-            requesting_user=self.student.username,
+            requesting_user=self.student,
         )
         self.assertIsNone(result)
 
