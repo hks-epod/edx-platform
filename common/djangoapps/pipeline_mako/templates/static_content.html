@@ -10,7 +10,6 @@ from openedx.core.djangoapps.theming.helpers import (
   get_template_path,
   get_themed_template_path,
   is_request_in_themed_site,
-  get_current_site_theme_dir,
 )
 from certificates.api import get_asset_url_by_slug
 from lang_pref.api import released_languages
@@ -18,8 +17,7 @@ from lang_pref.api import released_languages
 
 <%def name='url(file, raw=False)'><%
 try:
-    site_theme_dir = get_current_site_theme_dir()
-    url = staticfiles_storage.url(file, theme_dir=site_theme_dir)
+    url = staticfiles_storage.url(file)
 except:
     url = file
 %>${url}${"?raw" if raw else ""}</%def>

@@ -25,7 +25,7 @@ from django.contrib.staticfiles.finders import BaseFinder
 from openedx.core.djangoapps.theming.helpers import (
     get_base_theme_dir
 )
-from openedx.core.djangoapps.theming.storage import CachedComprehensiveThemingStorage
+from openedx.core.djangoapps.theming.storage import ComprehensiveThemingStorage
 
 
 class ComprehensiveThemeFinder(BaseFinder):
@@ -50,7 +50,7 @@ class ComprehensiveThemeFinder(BaseFinder):
         if not isinstance(themes_dir, basestring):
             raise ImproperlyConfigured("Your COMPREHENSIVE_THEME_DIR setting must be a string")
 
-        self.storage = CachedComprehensiveThemingStorage(location=themes_dir)
+        self.storage = ComprehensiveThemingStorage(location=themes_dir)
 
     def find(self, path, all=False):  # pylint: disable=redefined-builtin
         """

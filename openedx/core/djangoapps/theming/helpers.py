@@ -331,6 +331,6 @@ def get_static_file_url(asset):
     theme = get_current_site_theme_dir()
     try:
         return staticfiles_storage.url(asset, theme)
-    except ValueError:
+    except (ValueError, TypeError):
         # in case of an error return url without theme applied
         return staticfiles_storage.url(asset)

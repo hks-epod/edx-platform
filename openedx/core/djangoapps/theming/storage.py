@@ -4,25 +4,28 @@ See https://docs.djangoproject.com/en/1.8/ref/contrib/staticfiles/
 """
 
 import os.path
+import re
 
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.staticfiles.storage import StaticFilesStorage
 from django.utils._os import safe_join
+from django.conf import settings
 
 from openedx.core.djangoapps.theming.helpers import (
     get_base_theme_dir,
     get_project_root_name,
+    get_current_site_theme_dir,
 )
 
 
-class ComprehensiveThemingAwareMixin(object):
+class ComprehensiveThemingStorage(StaticFilesStorage):
     """
     Mixin for Django storage system to make it aware of the currently-active
     comprehensive theme, so that it can generate theme-scoped URLs for themed
     static assets.
     """
     def __init__(self, *args, **kwargs):
-        super(ComprehensiveThemingAwareMixin, self).__init__(*args, **kwargs)
+        super(ComprehensiveThemingStorage, self).__init__(*args, **kwargs)
         themes_dir = get_base_theme_dir()
         if not themes_dir:
             self.themes_location = None
@@ -66,24 +69,16 @@ class ComprehensiveThemingAwareMixin(object):
         except ValueError:
             # in case we don't '/' in name
             base = self.location
+        if base == settings.STATIC_ROOT:
+            name = re.sub(r"/?(?P<theme>[^/]+)/(?P<system>lms|cms)/static/", r"\g<theme>/", name)
         path = safe_join(base, name)
         return os.path.normpath(path)
 
-    def url(self, name, theme_dir=None):
+    def url(self, name):
         """
         Add the theme prefix to the asset URL
         """
+        theme_dir = get_current_site_theme_dir()
         if self.themed(name, theme_dir):
             name = theme_dir + "/" + name
-        return super(ComprehensiveThemingAwareMixin, self).url(name)
-
-
-class CachedComprehensiveThemingStorage(
-        ComprehensiveThemingAwareMixin,
-        StaticFilesStorage
-):
-    """
-    Used by the ComprehensiveThemeFinder class. Mixes in support for cached
-    files and comprehensive theming in static files.
-    """
-    pass
+        return super(ComprehensiveThemingStorage, self).url(name)
