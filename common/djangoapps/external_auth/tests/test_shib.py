@@ -44,34 +44,6 @@ GIVENNAMES = [None, '', 'jasön; John; bob']  # At Stanford, the givenNames can 
 SNS = [None, '', '包; smith']  # At Stanford, the sns can be a list delimited by ';'
 
 
-def gen_all_identities():
-    """
-    A generator for all combinations of test inputs.
-    Each generated item is a dict that represents what a shib IDP
-    could potentially pass to django via request.META, i.e.
-    setting (or not) request.META['givenName'], etc.
-    """
-    def _build_identity_dict(mail, display_name, given_name, surname):
-        """ Helper function to return a dict of test identity """
-        meta_dict = {'Shib-Identity-Provider': IDP,
-                     'REMOTE_USER': REMOTE_USER}
-        if display_name is not None:
-            meta_dict['displayName'] = display_name
-        if mail is not None:
-            meta_dict['mail'] = mail
-        if given_name is not None:
-            meta_dict['givenName'] = given_name
-        if surname is not None:
-            meta_dict['sn'] = surname
-        return meta_dict
-
-    for mail in MAILS:
-        for given_name in GIVENNAMES:
-            for surname in SNS:
-                for display_name in DISPLAYNAMES:
-                    yield _build_identity_dict(mail, display_name, given_name, surname)
-
-
 @ddt
 @override_settings(SESSION_ENGINE='django.contrib.sessions.backends.cache')
 class ShibSPTest(SharedModuleStoreTestCase):
@@ -209,13 +181,6 @@ class ShibSPTest(SharedModuleStoreTestCase):
                     self.assertIn("You have already created an account using an external login", response.content)
                     # no audit logging calls
                     self.assertEquals(len(audit_log_calls), 0)
-                else:
-                    self.assertEqual(response.status_code, 200)
-                    self.assertContains(response,
-                                        ("Preferences for {platform_name}"
-                                         .format(platform_name=settings.PLATFORM_NAME)))
-                    # no audit logging calls
-                    self.assertEquals(len(audit_log_calls), 0)
 
     def _base_test_extauth_auto_activate_user_with_flag(self, log_user_string="inactive@stanford.edu"):
         """
@@ -268,112 +233,6 @@ class ShibSPTest(SharedModuleStoreTestCase):
         Wrapper to run base_test_extauth_auto_activate_user_with_flag with {'SQUELCH_PII_IN_LOGS': True}
         """
         self._base_test_extauth_auto_activate_user_with_flag(log_user_string="user.id: 1")
-
-    @unittest.skipUnless(settings.FEATURES.get('AUTH_USE_SHIB'), "AUTH_USE_SHIB not set")
-    @data(*gen_all_identities())
-    def test_registration_form(self, identity):
-        """
-        Tests the registration form showing up with the proper parameters.
-
-        Uses django test client for its session support
-        """
-        client = DjangoTestClient()
-        # identity k/v pairs will show up in request.META
-        response = client.get(path='/shib-login/', data={}, follow=False, **identity)
-
-        self.assertEquals(response.status_code, 200)
-        mail_input_HTML = '<input class="" id="email" type="email" name="email"'
-        if not identity.get('mail'):
-            self.assertContains(response, mail_input_HTML)
-        else:
-            self.assertNotContains(response, mail_input_HTML)
-        sn_empty = not identity.get('sn')
-        given_name_empty = not identity.get('givenName')
-        displayname_empty = not identity.get('displayName')
-        fullname_input_html = '<input id="name" type="text" name="name"'
-        if sn_empty and given_name_empty and displayname_empty:
-            self.assertContains(response, fullname_input_html)
-        else:
-            self.assertNotContains(response, fullname_input_html)
-
-    @unittest.skipUnless(settings.FEATURES.get('AUTH_USE_SHIB'), "AUTH_USE_SHIB not set")
-    @data(*gen_all_identities())
-    def test_registration_form_submit(self, identity):
-        """
-        Tests user creation after the registration form that pops is submitted.  If there is no shib
-        ExternalAuthMap in the session, then the created user should take the username and email from the
-        request.
-
-        Uses django test client for its session support
-        """
-        # First we pop the registration form
-        client = DjangoTestClient()
-        response1 = client.get(path='/shib-login/', data={}, follow=False, **identity)
-        # Then we have the user answer the registration form
-        # These are unicode because request.POST returns unicode
-        postvars = {'email': u'post_email@stanford.edu',
-                    'username': u'post_username',  # django usernames can't be unicode
-                    'password': u'post_pássword',
-                    'name': u'post_náme',
-                    'terms_of_service': u'true',
-                    'honor_code': u'true'}
-        # use RequestFactory instead of TestClient here because we want access to request.user
-        request2 = self.request_factory.post('/create_account', data=postvars)
-        request2.session = client.session
-        request2.user = AnonymousUser()
-
-        mako_middleware_process_request(request2)
-        with patch('student.views.AUDIT_LOG') as mock_audit_log:
-            _response2 = create_account(request2)
-
-        user = request2.user
-        mail = identity.get('mail')
-
-        # verify logging of login happening during account creation:
-        audit_log_calls = mock_audit_log.method_calls
-        self.assertEquals(len(audit_log_calls), 3)
-        method_name, args, _kwargs = audit_log_calls[0]
-        self.assertEquals(method_name, 'info')
-        self.assertEquals(len(args), 1)
-        self.assertIn(u'Login success on new account creation', args[0])
-        self.assertIn(u'post_username', args[0])
-        method_name, args, _kwargs = audit_log_calls[1]
-        self.assertEquals(method_name, 'info')
-        self.assertEquals(len(args), 2)
-        self.assertIn(u'User registered with external_auth', args[0])
-        self.assertEquals(u'post_username', args[1])
-        method_name, args, _kwargs = audit_log_calls[2]
-        self.assertEquals(method_name, 'info')
-        self.assertEquals(len(args), 3)
-        self.assertIn(u'Updated ExternalAuthMap for ', args[0])
-        self.assertEquals(u'post_username', args[1])
-        self.assertEquals(u'test_user@stanford.edu', args[2].external_id)
-
-        # check that the created user has the right email, either taken from shib or user input
-        if mail:
-            self.assertEqual(user.email, mail)
-            self.assertEqual(list(User.objects.filter(email=postvars['email'])), [])
-            self.assertIsNotNone(User.objects.get(email=mail))  # get enforces only 1 such user
-        else:
-            self.assertEqual(user.email, postvars['email'])
-            self.assertEqual(list(User.objects.filter(email=mail)), [])
-            self.assertIsNotNone(User.objects.get(email=postvars['email']))  # get enforces only 1 such user
-
-        # check that the created user profile has the right name, either taken from shib or user input
-        profile = UserProfile.objects.get(user=user)
-        sn_empty = not identity.get('sn')
-        given_name_empty = not identity.get('givenName')
-        displayname_empty = not identity.get('displayName')
-
-        if displayname_empty:
-            if sn_empty and given_name_empty:
-                self.assertEqual(profile.name, postvars['name'])
-            else:
-                self.assertEqual(profile.name, request2.session['ExternalAuthMap'].external_name)
-                self.assertNotIn(u';', profile.name)
-        else:
-            self.assertEqual(profile.name, request2.session['ExternalAuthMap'].external_name)
-            self.assertEqual(profile.name, identity.get('displayName').decode('utf-8'))
 
     @unittest.skipUnless(settings.FEATURES.get('AUTH_USE_SHIB'), "AUTH_USE_SHIB not set")
     @SharedModuleStoreTestCase.modifies_courseware

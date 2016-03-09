@@ -113,7 +113,7 @@ def openid_login_complete(request,
         fullname = '%s %s' % (details.get('first_name', ''),
                               details.get('last_name', ''))
 
-        return _external_login_or_signup(
+        return _external_login(
             request,
             external_id,
             external_domain,
@@ -126,14 +126,15 @@ def openid_login_complete(request,
     return render_failure(request, 'Openid failure')
 
 
-def _external_login_or_signup(request,
-                              external_id,
-                              external_domain,
-                              credentials,
-                              email,
-                              fullname,
-                              retfun=None):
-    """Generic external auth login or signup"""
+# pylint: disable=too-many-statements
+def _external_login(request,
+                    external_id,
+                    external_domain,
+                    credentials,
+                    email,
+                    fullname,
+                    retfun=None):
+    """Generic external auth login"""
     # see if we have a map from this external_id to an edX username
     try:
         eamap = ExternalAuthMap.objects.get(external_id=external_id,
@@ -181,11 +182,13 @@ def _external_login_or_signup(request,
                     )
                     return default_render_failure(request, failure_msg)
             except User.DoesNotExist:
-                log.info(u'SHIB: No user for %s yet, doing signup', eamap.external_email)
-                return _signup(request, eamap, retfun)
+                failure_msg = u'SHIB: No user for {} yet.'.format(eamap.external_email)
+                log.info(failure_msg)
+                return default_render_failure(request, failure_msg)
         else:
-            log.info(u'No user for %s yet. doing signup', eamap.external_email)
-            return _signup(request, eamap, retfun)
+            failure_msg = u'No user for {} yet.'.format(eamap.external_email)
+            log.info(failure_msg)
+            return default_render_failure(request, failure_msg)
 
     # We trust shib's authentication, so no need to authenticate using the password again
     uname = internal_user.username
@@ -211,13 +214,6 @@ def _external_login_or_signup(request,
             AUDIT_LOG.info(u'Linked user "{0}" logged in via SSL certificate'.format(user.email))
     else:
         user = authenticate(username=uname, password=eamap.internal_password, request=request)
-    if user is None:
-        # we want to log the failure, but don't want to log the password attempted:
-        if settings.FEATURES['SQUELCH_PII_IN_LOGS']:
-            AUDIT_LOG.warning(u'External Auth Login failed')
-        else:
-            AUDIT_LOG.warning(u'External Auth Login failed for "{0}"'.format(uname))
-        return _signup(request, eamap, retfun)
 
     if not user.is_active:
         if settings.FEATURES.get('BYPASS_ACTIVATION_EMAIL_FOR_EXTAUTH'):
@@ -261,75 +257,6 @@ def _flatten_to_ascii(txt):
         return unicodedata.normalize('NFKD', txt).encode('ASCII', 'ignore')
     else:
         return unicode(unicodedata.normalize('NFKD', txt).encode('ASCII', 'ignore'))
-
-
-@ensure_csrf_cookie
-def _signup(request, eamap, retfun=None):
-    """
-    Present form to complete for signup via external authentication.
-    Even though the user has external credentials, he/she still needs
-    to create an account on the edX system, and fill in the user
-    registration form.
-
-    eamap is an ExternalAuthMap object, specifying the external user
-    for which to complete the signup.
-
-    retfun is a function to execute for the return value, if immediate
-    signup is used.  That allows @ssl_login_shortcut() to work.
-    """
-    # save this for use by student.views.create_account
-    request.session['ExternalAuthMap'] = eamap
-
-    if settings.FEATURES.get('AUTH_USE_CERTIFICATES_IMMEDIATE_SIGNUP', ''):
-        # do signin immediately, by calling create_account, instead of asking
-        # student to fill in form.  MIT students already have information filed.
-        username = eamap.external_email.split('@', 1)[0]
-        username = username.replace('.', '_')
-        post_vars = dict(username=username,
-                         honor_code=u'true',
-                         terms_of_service=u'true')
-        log.info(u'doing immediate signup for %s, params=%s', username, post_vars)
-        student.views.create_account(request, post_vars)
-        # should check return content for successful completion before
-        if retfun is not None:
-            return retfun()
-        else:
-            return redirect('/')
-
-    # default conjoin name, no spaces, flattened to ascii b/c django can't handle unicode usernames, sadly
-    # but this only affects username, not fullname
-    username = re.sub(r'\s', '', _flatten_to_ascii(eamap.external_name), flags=re.UNICODE)
-
-    context = {'has_extauth_info': True,
-               'show_signup_immediately': True,
-               'extauth_domain': eamap.external_domain,
-               'extauth_id': eamap.external_id,
-               'extauth_email': eamap.external_email,
-               'extauth_username': username,
-               'extauth_name': eamap.external_name,
-               'ask_for_tos': True,
-               }
-
-    # Some openEdX instances can't have terms of service for shib users, like
-    # according to Stanford's Office of General Counsel
-    uses_shibboleth = (settings.FEATURES.get('AUTH_USE_SHIB') and
-                       eamap.external_domain.startswith(SHIBBOLETH_DOMAIN_PREFIX))
-    if uses_shibboleth and settings.FEATURES.get('SHIB_DISABLE_TOS'):
-        context['ask_for_tos'] = False
-
-    # detect if full name is blank and ask for it from user
-    context['ask_for_fullname'] = eamap.external_name.strip() == ''
-
-    # validate provided mail and if it's not valid ask the user
-    try:
-        validate_email(eamap.external_email)
-        context['ask_for_email'] = False
-    except ValidationError:
-        context['ask_for_email'] = True
-
-    log.info(u'EXTAUTH: Doing signup for %s', eamap.external_id)
-
-    return student.views.register_user(request, extra_context=context)
 
 
 # -----------------------------------------------------------------------------
@@ -401,11 +328,11 @@ def ssl_login_shortcut(fn):
             return fn(*args, **kwargs)
 
         def retfun():
-            """Wrap function again for call by _external_login_or_signup"""
+            """Wrap function again for call by _external_login"""
             return fn(*args, **kwargs)
 
         (_user, email, fullname) = _ssl_dn_extract_info(cert)
-        return _external_login_or_signup(
+        return _external_login(
             request,
             external_id=email,
             external_domain="ssl:MIT",
@@ -448,7 +375,7 @@ def ssl_login(request):
 
     redirect_to = get_next_url_for_login_page(request)
     retfun = functools.partial(redirect, redirect_to)
-    return _external_login_or_signup(
+    return _external_login(
         request,
         external_id=email,
         external_domain="ssl:MIT",
@@ -526,7 +453,7 @@ def shib_login(request):
     redirect_to = get_next_url_for_login_page(request)
     retfun = functools.partial(_safe_postlogin_redirect, redirect_to, request.get_host())
 
-    return _external_login_or_signup(
+    return _external_login(
         request,
         external_id=shib['REMOTE_USER'],
         external_domain=SHIBBOLETH_DOMAIN_PREFIX + shib['Shib-Identity-Provider'],
