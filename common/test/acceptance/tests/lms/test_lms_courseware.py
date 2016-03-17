@@ -2,7 +2,7 @@
 """
 End-to-end tests for the LMS.
 """
-import time
+from nose.plugins.attrib import attr
 
 from ..helpers import UniqueCourseTest
 from ...pages.studio.auto_auth import AutoAuthPage
@@ -422,3 +422,14 @@ class CoursewareMultipleVerticalsTest(UniqueCourseTest):
             position=4
         ).visit()
         self.assertIn('html 2 dummy body', html2_page.get_selected_tab_content())
+
+    @attr('a11y')
+    def test_courseware_a11y(self):
+        """
+        Run accessibility audit for the problem type.
+        """
+        self.course_nav.go_to_section('Test Section 1', 'Test Subsection 1,1')
+        # Set the scope to the sequence navigation
+        self.courseware_page.a11y_audit.config.set_scope(
+            include=['div.sequence-nav'])
+        self.courseware_page.a11y_audit.check_for_accessibility_errors()

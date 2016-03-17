@@ -17,7 +17,15 @@ class @Sequence
     $(selector, @el)
 
   bind: ->
-    @$('#sequence-list a').click @goto
+    @$('#sequence-list .nav-item').click @goto
+    @$('#sequence-list .nav-item').on('focus mouseenter', @displayTabTooltip)
+    @$('#sequence-list .nav-item').on('blur mouseleave', @hideTabTooltip)
+
+  displayTabTooltip: (event) =>
+    $(event.currentTarget).find('.sequence-tooltip').removeClass('sr')
+
+  hideTabTooltip: (event) =>
+    $(event.currentTarget).find('.sequence-tooltip').addClass('sr')
 
   initProgress: ->
     @progressTable = {}  # "#problem_#{id}" -> progress
@@ -117,7 +125,6 @@ class @Sequence
       sequence_links.click @goto
 
       @sr_container.focus();
-      # @$("a.active").blur()
 
   goto: (event) =>
     event.preventDefault()
@@ -165,7 +172,7 @@ class @Sequence
     @render new_position
 
   link_for: (position) ->
-    @$("#sequence-list a[data-element=#{position}]")
+    @$("#sequence-list .nav-item[data-element=#{position}]")
 
   mark_visited: (position) ->
     # Don't overwrite class attribute to avoid changing Progress class
