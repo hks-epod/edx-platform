@@ -417,7 +417,7 @@ def _index_bulk_op(request, course_key, chapter, section, position):
 
         context = {
             'csrf': csrf(request)['csrf_token'],
-            'COURSE_TITLE': course.display_name_with_default_escaped,
+            'COURSE_TITLE': course.display_name_with_default,
             'course': course,
             'init': '',
             'fragment': Fragment(),
@@ -553,7 +553,7 @@ def _index_bulk_op(request, course_key, chapter, section, position):
             'next_url': _compute_section_url(next_section_info, 'first') if next_section_info else None,
         }
         context['fragment'] = section_module.render(STUDENT_VIEW, section_render_context)
-        context['section_title'] = section_descriptor.display_name_with_default_escaped
+        context['section_title'] = section_descriptor.display_name_with_default
         result = render_to_response('courseware/courseware.html', context)
     except Exception as e:
 

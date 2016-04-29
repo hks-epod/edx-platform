@@ -155,7 +155,8 @@ def toc_for_course(user, request, course, active_chapter, active_section, field_
         toc_chapters = list()
         chapters = course_module.get_display_items()
 
-        # See if the course is gated by one or more content milestones
+        # Check for content which needs to be completed
+        # before the rest of the content is made available
         required_content = milestones_helpers.get_required_content(course, user)
 
         # The user may not actually have to complete the entrance exam, if one is required
@@ -168,7 +169,7 @@ def toc_for_course(user, request, course, active_chapter, active_section, field_
         for chapter in chapters:
             # Only show required content, if there is required content
             # chapter.hide_from_toc is read-only (bool)
-            display_id = slugify(chapter.display_name_with_default_escaped)
+            display_id = slugify(chapter.display_name_with_default)
             local_hide_from_toc = False
             if required_content:
                 if unicode(chapter.location) not in required_content:
@@ -180,9 +181,7 @@ def toc_for_course(user, request, course, active_chapter, active_section, field_
 
             sections = list()
             for section in chapter.get_display_items():
-                # skip the section if it is gated/hidden from the user
-                if gated_content and unicode(section.location) in gated_content:
-                    continue
+                # skip the section if it is hidden from the user
                 if section.hide_from_toc:
                     continue
 
@@ -191,7 +190,7 @@ def toc_for_course(user, request, course, active_chapter, active_section, field_
                     found_active_section = True
 
                 section_context = {
-                    'display_name': section.display_name_with_default_escaped,
+                    'display_name': section.display_name_with_default,
                     'url_name': section.url_name,
                     'format': section.format if section.format is not None else '',
                     'due': section.due,

@@ -200,7 +200,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             childinfo = {
                 'content': rendered_child.content,
                 'title': "\n".join(titles),
-                'page_title': titles[0] if titles else '',
+                'page_title': child.display_name_with_default,
                 'progress_status': Progress.to_js_status_str(progress),
                 'progress_detail': Progress.to_js_detail_str(progress),
                 'type': child.get_icon_class(),
